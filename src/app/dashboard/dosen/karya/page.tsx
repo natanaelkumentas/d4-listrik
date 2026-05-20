@@ -65,6 +65,8 @@ export default function DosenKaryaPage() {
   const [fotoUrls, setFotoUrls] = useState<string[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmDeletingId, setConfirmDeletingId] = useState<string | null>(null);
 
   const resetMeta = () => {
     setMetaJurnal(""); setMetaLink(""); setMetaPenulis([]);
@@ -178,9 +180,6 @@ export default function DosenKaryaPage() {
       }
     } catch (e) { console.error("Failed to submit karya", e); }
   };
-
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmDeletingId, setConfirmDeletingId] = useState<string | null>(null);
 
   const handleDeletePending = (id: string) => {
     setConfirmDeletingId(id);
