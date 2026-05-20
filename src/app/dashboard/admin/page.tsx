@@ -1,9 +1,10 @@
 "use client";
 
-import { HiOutlineUserGroup, HiOutlinePhoto, HiOutlineAcademicCap, HiOutlineBookOpen, HiOutlineTrophy } from "react-icons/hi2";
+import { HiOutlineUserGroup, HiOutlinePhoto, HiOutlineAcademicCap, HiOutlineBookOpen, HiOutlineTrophy, HiOutlinePencilSquare } from "react-icons/hi2";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { cachedFetch } from "@/lib/fetchCache";
+import { cachedFetch, invalidateCache } from "@/lib/fetchCache";
+import Modal from "@/components/universal/Modal";
 
 interface Stats {
   total_mahasiswa_aktif: number;
@@ -16,6 +17,13 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [mataKuliahCount, setMataKuliahCount] = useState<number>(0);
 
+  // Edit Statistik Modal States
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [activeInput, setActiveInput] = useState<number>(0);
+  const [graduatesInput, setGraduatesInput] = useState<number>(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -26,6 +34,8 @@ export default function AdminDashboardPage() {
 
         if (statData) {
           setStats(statData);
+          setActiveInput(statData.total_mahasiswa_aktif);
+          setGraduatesInput(statData.total_lulusan);
         }
 
         if (kurikulumData) {
@@ -38,6 +48,49 @@ export default function AdminDashboardPage() {
 
     fetchStats();
   }, []);
+
+  const handleOpenEdit = () => {
+    if (stats) {
+      setActiveInput(stats.total_mahasiswa_aktif);
+      setGraduatesInput(stats.total_lulusan);
+    }
+    setErrorMsg("");
+    setIsEditModalOpen(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/statistik", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          total_mahasiswa_aktif: activeInput,
+          total_lulusan: graduatesInput,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal memperbarui statistik");
+      }
+
+      invalidateCache("/api/statistik");
+      setStats((prev) => prev ? {
+        ...prev,
+        total_mahasiswa_aktif: activeInput,
+        total_lulusan: graduatesInput,
+      } : null);
+
+      setIsEditModalOpen(false);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Terjadi kesalahan");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const cards = [
     {
@@ -105,8 +158,18 @@ export default function AdminDashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Overview</h1>
-      <p className="text-gray-500 mb-8">Selamat datang di panel administrasi.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Overview</h1>
+          <p className="text-gray-500 text-sm">Selamat datang di panel administrasi.</p>
+        </div>
+        <button 
+          onClick={handleOpenEdit}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors shadow-sm"
+        >
+          <HiOutlinePencilSquare className="w-5 h-5" /> Edit Statistik
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {cards.map((card) => {
@@ -114,7 +177,7 @@ export default function AdminDashboardPage() {
           return (
             <div
               key={card.label}
-              className={`${card.bg} rounded-2xl p-6 border ${card.border} flex items-center justify-between`}
+              className={`${card.bg} rounded-2xl p-6 border ${card.border} flex items-center justify-between shadow-sm hover:shadow-md transition-shadow`}
             >
               <div>
                 <p className={`${card.textColor} text-sm font-bold uppercase tracking-wider mb-1`}>
@@ -139,6 +202,68 @@ export default function AdminDashboardPage() {
           );
         })}
       </div>
+
+      {/* Edit Statistik Modal */}
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Statistik Mahasiswa">
+        <form onSubmit={handleSave} className="space-y-4">
+          {errorMsg && (
+            <div className="p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100">
+              {errorMsg}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Mahasiswa Aktif</label>
+            <input 
+              type="number" 
+              value={activeInput}
+              onChange={(e) => setActiveInput(parseInt(e.target.value) || 0)}
+              required
+              min="0"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm"
+              placeholder="Masukkan jumlah mahasiswa aktif..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Total Lulusan</label>
+            <input 
+              type="number" 
+              value={graduatesInput}
+              onChange={(e) => setGraduatesInput(parseInt(e.target.value) || 0)}
+              required
+              min="0"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm"
+              placeholder="Masukkan total lulusan..."
+            />
+          </div>
+
+          <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6">
+            <button 
+              type="button" 
+              onClick={() => setIsEditModalOpen(false)} 
+              className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+              disabled={isSubmitting}
+            >
+              Batal
+            </button>
+            <button 
+              type="submit" 
+              className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors flex items-center gap-1.5"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                "Simpan Perubahan"
+              )}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
