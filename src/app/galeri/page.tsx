@@ -5,16 +5,62 @@ import PageHero from "@/components/universal/PageHero";
 import GaleriFilter from "@/components/galeri/GaleriFilter";
 import GaleriCard from "@/components/galeri/GaleriCard";
 import { useData } from "@/context/DataContext";
+import { GaleriItem } from "@/data/galeri";
+import { cachedFetch } from "@/lib/fetchCache";
 import { HiInboxStack } from "react-icons/hi2";
+
+const jenisLabels: Record<string, string> = {
+  publikasi: "Publikasi",
+  penelitian: "Penelitian",
+  pengabdian: "Pengabdian",
+  bukuAjar: "Buku Ajar",
+};
+
+const jenisGradients: Record<string, string> = {
+  publikasi: "from-blue-500 to-indigo-600",
+  penelitian: "from-violet-500 to-purple-600",
+  pengabdian: "from-lime-500 to-green-600",
+  bukuAjar: "from-amber-500 to-orange-600",
+};
 
 export default function GaleriPage() {
   const { galeriList, ensureGaleriLoaded } = useData();
+  const [karyaGaleri, setKaryaGaleri] = useState<GaleriItem[]>([]);
 
   useEffect(() => { ensureGaleriLoaded(); }, [ensureGaleriLoaded]);
+
+  // Fetch karya and transform into virtual galeri items
+  useEffect(() => {
+    cachedFetch<any[]>("/api/karya")
+      .then((karyaList) => {
+        if (!karyaList) return;
+        const tridharmaJenis = ["publikasi", "penelitian", "pengabdian", "bukuAjar"];
+        const virtualItems: GaleriItem[] = karyaList
+          .filter((k) => tridharmaJenis.includes(k.jenis) && k.foto_urls && k.foto_urls.length > 0)
+          .map((k) => ({
+            id: `karya-${k.id}`,
+            judul: k.judul,
+            deskripsi: k.deskripsi || "",
+            tanggal: `${k.tahun}-01-01`,
+            kategori: "tridharma" as const,
+            foto: k.foto_urls || [],
+            warna: jenisGradients[k.jenis] || "from-blue-500 to-indigo-600",
+            subLabel: jenisLabels[k.jenis] || k.jenis,
+          }));
+        setKaryaGaleri(virtualItems);
+      })
+      .catch((err) => console.error("Failed to fetch karya for galeri", err));
+  }, []);
+
   const [filter, setFilter] = useState<"semua" | "fasilitas" | "tridharma">("semua");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filtered = galeriList.filter((item) => {
+  // Merge galeri + karya virtual items, deduplicated, sorted by date desc
+  const mergedList = [...galeriList, ...karyaGaleri].sort(
+    (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+  );
+
+  const filtered = mergedList.filter((item) => {
     const matchesFilter = filter === "semua" || item.kategori === filter;
     const matchesSearch = item.judul.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           item.deskripsi.toLowerCase().includes(searchQuery.toLowerCase());

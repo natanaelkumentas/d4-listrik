@@ -33,7 +33,7 @@ export default function GaleriCard({
 
         {/* Category badge */}
         <span className="absolute top-3 right-3 px-3 py-1 rounded-full bg-white/90 text-xs font-semibold text-gray-700 backdrop-blur-sm shadow-sm">
-          {item.kategori === "fasilitas" ? "Fasilitas" : "Tridharma"}
+          {item.kategori === "fasilitas" ? "Fasilitas" : item.subLabel ? `Tridharma · ${item.subLabel}` : "Tridharma"}
         </span>
 
         {/* Date badge on image */}

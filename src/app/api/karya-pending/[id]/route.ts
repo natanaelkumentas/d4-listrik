@@ -49,6 +49,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
           tahun: pending.tahun,
           deskripsi: pending.deskripsi,
           metadata: pending.metadata,
+          foto_urls: pending.foto_urls || [],
         });
 
       if (insertError) {

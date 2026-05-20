@@ -8,7 +8,8 @@ import Modal from "@/components/universal/Modal";
 import PersonLinker from "@/components/universal/PersonLinker";
 import { cachedFetch, invalidateCache } from "@/lib/fetchCache";
 import type { PersonLink } from "@/components/universal/PersonLinker";
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineClock, HiOutlineCheckCircle, HiOutlineXCircle } from "react-icons/hi2";
+import { HiOutlinePlus, HiOutlineTrash, HiOutlineClock, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlinePhoto } from "react-icons/hi2";
+import { useRef } from "react";
 
 interface PendingKarya {
   id: string;
@@ -55,6 +56,9 @@ export default function DosenKaryaPage() {
   const [metaNomorSertifikat, setMetaNomorSertifikat] = useState("");
   const [metaPenyelenggara, setMetaPenyelenggara] = useState("");
   const [metaLinkSertifikat, setMetaLinkSertifikat] = useState("");
+  const [fotoUrls, setFotoUrls] = useState<string[]>([]);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const resetMeta = () => {
     setMetaJurnal(""); setMetaLink(""); setMetaPenulis([]);
@@ -111,7 +115,31 @@ export default function DosenKaryaPage() {
   const handleOpenAdd = () => {
     setFormData({ judul: "", jenis: "publikasi", tahun: new Date().getFullYear(), deskripsi: "" });
     resetMeta();
+    setFotoUrls([]);
     setIsModalOpen(true);
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsUploadingPhoto(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const fd = new FormData();
+        fd.append("file", files[i]);
+        fd.append("jenis", (formData.jenis as string) || "karya");
+        const res = await fetch("/api/upload/karya", { method: "POST", body: fd });
+        if (res.ok) {
+          const data = await res.json();
+          setFotoUrls(prev => [...prev, data.url]);
+        }
+      }
+    } catch (err) { console.error("Photo upload failed", err); }
+    finally { setIsUploadingPhoto(false); if (photoInputRef.current) photoInputRef.current.value = ""; }
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    setFotoUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -128,6 +156,7 @@ export default function DosenKaryaPage() {
           tahun: Number(formData.tahun),
           deskripsi: formData.deskripsi || null,
           metadata: buildMetadata(jenis),
+          foto_urls: fotoUrls,
         }),
       });
 
@@ -352,6 +381,34 @@ export default function DosenKaryaPage() {
               </>
             )}
           </div>
+
+          {/* ===== Photo Upload ===== */}
+          <div className="border-t border-gray-100 pt-4 mt-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Foto Dokumentasi (untuk Galeri Tridharma)</p>
+            {fotoUrls.length > 0 && (
+              <div className="flex flex-wrap gap-3 mb-3">
+                {fotoUrls.map((url, i) => (
+                  <div key={i} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                    <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => handleRemovePhoto(i)}
+                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <HiOutlineTrash className="w-5 h-5 text-white" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" id="dosen-karya-photo-upload" />
+              <button type="button" onClick={() => photoInputRef.current?.click()} disabled={isUploadingPhoto}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50">
+                <HiOutlinePhoto className="w-4 h-4" />
+                {isUploadingPhoto ? "Mengupload..." : "Tambah Foto"}
+              </button>
+              {fotoUrls.length === 0 && <span className="text-xs text-gray-400">Belum ada foto</span>}
+            </div>
+          </div>
+
           <div className="p-3 rounded-xl bg-amber-50 text-amber-700 text-xs border border-amber-100">
             <strong>Info:</strong> Karya yang diajukan akan ditinjau oleh admin sebelum dipublikasikan.
           </div>

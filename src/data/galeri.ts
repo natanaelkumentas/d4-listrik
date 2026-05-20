@@ -6,6 +6,7 @@ export interface GaleriItem {
   kategori: "fasilitas" | "tridharma";
   foto: string[]; // URL dari Supabase Storage atau path lokal
   warna: string; // gradient color for placeholder/fallback
+  subLabel?: string; // e.g. "Publikasi", "Penelitian" — for karya items in galeri
 }
 
 export const galeriData: GaleriItem[] = [

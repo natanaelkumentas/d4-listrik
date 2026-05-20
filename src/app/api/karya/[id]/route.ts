@@ -45,7 +45,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     }
 
     const body = await request.json();
-    const { jenis, judul, tahun, deskripsi, metadata } = body;
+    const { jenis, judul, tahun, deskripsi, metadata, foto_urls } = body;
 
     const updateData: Record<string, unknown> = {};
     if (jenis !== undefined) updateData.jenis = jenis;
@@ -53,6 +53,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (tahun !== undefined) updateData.tahun = tahun;
     if (deskripsi !== undefined) updateData.deskripsi = deskripsi;
     if (metadata !== undefined) updateData.metadata = metadata;
+    if (foto_urls !== undefined) updateData.foto_urls = foto_urls;
 
     const { data, error } = await supabase
       .from("karya")

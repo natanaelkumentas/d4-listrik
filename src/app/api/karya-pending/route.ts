@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     const user = result;
     const body = await request.json();
-    const { dosen_id, jenis, judul, tahun, deskripsi, metadata } = body;
+    const { dosen_id, jenis, judul, tahun, deskripsi, metadata, foto_urls } = body;
 
     if (!dosen_id || !jenis || !judul || !tahun) {
       return NextResponse.json(
@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
         tahun,
         deskripsi: deskripsi || null,
         metadata: metadata || null,
+        foto_urls: foto_urls || [],
         status: "pending",
       })
       .select()

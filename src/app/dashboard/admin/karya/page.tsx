@@ -5,7 +5,8 @@ import Modal from "@/components/universal/Modal";
 import PersonLinker from "@/components/universal/PersonLinker";
 import { cachedFetch, invalidateCache } from "@/lib/fetchCache";
 import type { PersonLink } from "@/components/universal/PersonLinker";
-import { HiOutlineCheck, HiOutlineXMark, HiOutlineTrash, HiOutlineClock, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlinePlus, HiOutlinePencilSquare } from "react-icons/hi2";
+import { HiOutlineCheck, HiOutlineXMark, HiOutlineTrash, HiOutlineClock, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlinePlus, HiOutlinePencilSquare, HiOutlinePhoto, HiOutlineXCircle as HiXCircle } from "react-icons/hi2";
+import { useRef } from "react";
 
 interface PendingKarya {
   id: string;
@@ -30,6 +31,7 @@ interface Karya {
   tahun: number;
   deskripsi: string | null;
   metadata: Record<string, unknown> | null;
+  foto_urls: string[];
 }
 
 interface DosenOption {
@@ -62,6 +64,9 @@ export default function AdminKaryaPage() {
   const [karyaModalOpen, setKaryaModalOpen] = useState(false);
   const [editingKaryaId, setEditingKaryaId] = useState<string | null>(null);
   const [karyaForm, setKaryaForm] = useState<Record<string, string | number>>({});
+  const [fotoUrls, setFotoUrls] = useState<string[]>([]);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Metadata state per jenis
   const [metaJurnal, setMetaJurnal] = useState("");
@@ -182,11 +187,36 @@ export default function AdminKaryaPage() {
     }
   };
 
+  // ========== Photo Upload ==========
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsUploadingPhoto(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const fd = new FormData();
+        fd.append("file", files[i]);
+        fd.append("jenis", (karyaForm.jenis as string) || "karya");
+        const res = await fetch("/api/upload/karya", { method: "POST", body: fd });
+        if (res.ok) {
+          const data = await res.json();
+          setFotoUrls(prev => [...prev, data.url]);
+        }
+      }
+    } catch (err) { console.error("Photo upload failed", err); }
+    finally { setIsUploadingPhoto(false); if (photoInputRef.current) photoInputRef.current.value = ""; }
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    setFotoUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
   // ========== Karya CRUD ==========
   const handleOpenAddKarya = () => {
     setEditingKaryaId(null);
     setKaryaForm({ dosen_id: dosenOptions[0]?.id || "", jenis: "publikasi", judul: "", tahun: new Date().getFullYear(), deskripsi: "" });
     resetMeta();
+    setFotoUrls([]);
     setKaryaModalOpen(true);
   };
 
@@ -194,6 +224,7 @@ export default function AdminKaryaPage() {
     setEditingKaryaId(k.id);
     setKaryaForm({ dosen_id: k.dosen_id, jenis: k.jenis, judul: k.judul, tahun: k.tahun, deskripsi: k.deskripsi || "" });
     populateMeta(k.jenis, k.metadata);
+    setFotoUrls(k.foto_urls || []);
     setKaryaModalOpen(true);
   };
 
@@ -207,6 +238,7 @@ export default function AdminKaryaPage() {
       tahun: Number(karyaForm.tahun),
       deskripsi: karyaForm.deskripsi || null,
       metadata: buildMetadata(jenis),
+      foto_urls: fotoUrls,
     };
 
     if (editingKaryaId) {
@@ -496,6 +528,33 @@ export default function AdminKaryaPage() {
                 </div>
               </>
             )}
+          </div>
+
+          {/* ===== Photo Upload ===== */}
+          <div className="border-t border-gray-100 pt-4 mt-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Foto Dokumentasi (untuk Galeri Tridharma)</p>
+            {fotoUrls.length > 0 && (
+              <div className="flex flex-wrap gap-3 mb-3">
+                {fotoUrls.map((url, i) => (
+                  <div key={i} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                    <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => handleRemovePhoto(i)}
+                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <HiOutlineTrash className="w-5 h-5 text-white" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" id="karya-photo-upload" />
+              <button type="button" onClick={() => photoInputRef.current?.click()} disabled={isUploadingPhoto}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50">
+                <HiOutlinePhoto className="w-4 h-4" />
+                {isUploadingPhoto ? "Mengupload..." : "Tambah Foto"}
+              </button>
+              {fotoUrls.length === 0 && <span className="text-xs text-gray-400">Belum ada foto</span>}
+            </div>
           </div>
 
           <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6">

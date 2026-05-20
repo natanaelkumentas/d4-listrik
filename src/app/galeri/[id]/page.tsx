@@ -1,19 +1,72 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useData } from "@/context/DataContext";
 import { notFound, useParams } from "next/navigation";
 import Link from "next/link";
 import { HiArrowLeft, HiOutlineCalendar, HiOutlineTag } from "react-icons/hi2";
+import { GaleriItem } from "@/data/galeri";
+import { cachedFetch } from "@/lib/fetchCache";
+
+const jenisLabels: Record<string, string> = {
+  publikasi: "Publikasi",
+  penelitian: "Penelitian",
+  pengabdian: "Pengabdian",
+  bukuAjar: "Buku Ajar",
+};
+
+const jenisGradients: Record<string, string> = {
+  publikasi: "from-blue-500 to-indigo-600",
+  penelitian: "from-violet-500 to-purple-600",
+  pengabdian: "from-lime-500 to-green-600",
+  bukuAjar: "from-amber-500 to-orange-600",
+};
 
 export default function GaleriDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const { galeriList, ensureGaleriLoaded } = useData();
+  const [karyaItem, setKaryaItem] = useState<GaleriItem | null>(null);
+  const [isKaryaLoading, setIsKaryaLoading] = useState(false);
 
   useEffect(() => { ensureGaleriLoaded(); }, [ensureGaleriLoaded]);
 
-  const item = galeriList.find((g) => g.id === id);
+  // If it's a karya-prefixed ID, fetch from karya API
+  const isKarya = id.startsWith("karya-");
+  const realKaryaId = isKarya ? id.replace("karya-", "") : null;
+
+  useEffect(() => {
+    if (!isKarya || !realKaryaId) return;
+    setIsKaryaLoading(true);
+    cachedFetch<any[]>("/api/karya")
+      .then((karyaList) => {
+        if (!karyaList) return;
+        const k = karyaList.find((karya: any) => karya.id === realKaryaId);
+        if (k) {
+          setKaryaItem({
+            id: `karya-${k.id}`,
+            judul: k.judul,
+            deskripsi: k.deskripsi || "",
+            tanggal: `${k.tahun}-01-01`,
+            kategori: "tridharma",
+            foto: k.foto_urls || [],
+            warna: jenisGradients[k.jenis] || "from-blue-500 to-indigo-600",
+            subLabel: jenisLabels[k.jenis] || k.jenis,
+          });
+        }
+      })
+      .catch((err) => console.error("Failed to fetch karya detail", err))
+      .finally(() => setIsKaryaLoading(false));
+  }, [isKarya, realKaryaId]);
+
+  const item = isKarya ? karyaItem : galeriList.find((g) => g.id === id);
+
+  if (isKaryaLoading) return (
+    <div className="min-h-[50vh] flex flex-col items-center justify-center">
+      <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mb-4" />
+      <p className="text-sm text-gray-500 font-medium">Memuat data...</p>
+    </div>
+  );
 
   if (!item) return (
     <div className="min-h-[50vh] flex flex-col items-center justify-center">
@@ -28,6 +81,12 @@ export default function GaleriDetailPage() {
     month: 'long',
     year: 'numeric'
   }).format(dateObj);
+
+  const categoryLabel = item.kategori === "fasilitas"
+    ? "Fasilitas"
+    : item.subLabel
+      ? `Tridharma · ${item.subLabel}`
+      : "Tridharma";
 
   return (
     <>
@@ -52,7 +111,7 @@ export default function GaleriDetailPage() {
                 <div className="flex flex-wrap items-center gap-3 mb-4">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-100 text-primary-700 text-xs font-bold uppercase tracking-wider">
                     <HiOutlineTag className="w-3.5 h-3.5" />
-                    {item.kategori === "fasilitas" ? "Fasilitas" : "Tridharma"}
+                    {categoryLabel}
                   </span>
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium border border-gray-200">
                     <HiOutlineCalendar className="w-3.5 h-3.5" />
