@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HiBolt, HiMapPin, HiPhone, HiEnvelope } from "react-icons/hi2";
+import { HiMapPin, HiPhone, HiEnvelope } from "react-icons/hi2";
 
 const quickLinks = [
   { href: "/", label: "Beranda" },
@@ -17,8 +17,12 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 text-white font-bold text-lg shadow-lg">
-                <HiBolt className="text-lg" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white p-0.5 shadow-lg overflow-hidden">
+                <img
+                  src="/images/logo-polimdo.png"
+                  alt="Logo Polimdo"
+                  className="h-full w-full object-contain"
+                />
               </div>
               <div>
                 <h3 className="font-bold text-lg leading-tight">D4 Teknik Listrik</h3>

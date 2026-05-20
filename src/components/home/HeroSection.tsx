@@ -2,17 +2,26 @@ import Link from "next/link";
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-[85vh] flex items-center bg-gradient-to-br from-primary-950 via-primary-900 to-primary-800 overflow-hidden">
+    <section className="relative min-h-[85vh] flex items-center bg-primary-950 overflow-hidden">
+      {/* Background Image with Dark Overlay */}
+      <div className="absolute inset-0 z-0">
+        <img
+          src="/images/hero-bg.jpg"
+          alt="Gedung Politeknik Negeri Manado"
+          className="w-full h-full object-cover object-center opacity-40"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-950 via-primary-950/90 to-primary-900/80" />
+      </div>
+
       {/* Decorative blurs */}
-      <div className="absolute inset-0">
-        <div className="absolute top-20 right-20 w-96 h-96 rounded-full bg-accent-400/15 blur-3xl" />
-        <div className="absolute bottom-20 left-10 w-80 h-80 rounded-full bg-primary-400/10 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary-600/5 blur-3xl" />
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-20 right-20 w-96 h-96 rounded-full bg-accent-400/10 blur-3xl" />
+        <div className="absolute bottom-20 left-10 w-80 h-80 rounded-full bg-primary-400/5 blur-3xl" />
       </div>
 
       {/* Grid pattern overlay */}
       <div
-        className="absolute inset-0 opacity-[0.03]"
+        className="absolute inset-0 opacity-[0.02] z-0"
         style={{
           backgroundImage:
             "linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)",
@@ -20,7 +29,7 @@ export default function HeroSection() {
         }}
       />
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
         <div className="max-w-3xl">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/10 text-primary-200 text-xs font-medium mb-6 animate-fade-in-up">

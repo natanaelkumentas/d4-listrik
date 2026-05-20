@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import { Dosen } from "@/data/dosen";
 import Modal from "@/components/universal/Modal";
@@ -8,7 +8,9 @@ import { HiOutlinePlus, HiOutlinePencilSquare, HiOutlineTrash, HiOutlineArrowUpT
 import Image from "next/image";
 
 export default function AdminDosenPage() {
-  const { dosenList, addDosen, updateDosen, deleteDosen } = useData();
+  const { dosenList, addDosen, updateDosen, deleteDosen, ensureDosenLoaded } = useData();
+
+  useEffect(() => { ensureDosenLoaded(); }, [ensureDosenLoaded]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Dosen>>({});

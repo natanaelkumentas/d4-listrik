@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import { notFound, useParams } from "next/navigation";
 import Link from "next/link";
@@ -8,7 +9,9 @@ import { HiArrowLeft, HiOutlineCalendar, HiOutlineTag } from "react-icons/hi2";
 export default function GaleriDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const { galeriList } = useData();
+  const { galeriList, ensureGaleriLoaded } = useData();
+
+  useEffect(() => { ensureGaleriLoaded(); }, [ensureGaleriLoaded]);
 
   const item = galeriList.find((g) => g.id === id);
 

@@ -1,36 +1,35 @@
 "use client";
 
-import { useData } from "@/context/DataContext";
 import { HiOutlineUserGroup, HiOutlinePhoto, HiOutlineAcademicCap, HiOutlineBookOpen, HiOutlineTrophy } from "react-icons/hi2";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { cachedFetch } from "@/lib/fetchCache";
 
-interface Statistik {
+interface Stats {
   total_mahasiswa_aktif: number;
   total_lulusan: number;
+  total_dosen: number;
+  total_galeri: number;
 }
 
 export default function AdminDashboardPage() {
-  const { dosenList, galeriList } = useData();
-  const [statistik, setStatistik] = useState<Statistik | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [mataKuliahCount, setMataKuliahCount] = useState<number>(0);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [statRes, kurikulumRes] = await Promise.all([
-          fetch("/api/statistik"),
-          fetch("/api/kurikulum"),
+        const [statData, kurikulumData] = await Promise.all([
+          cachedFetch<Stats>("/api/statistik"),
+          cachedFetch<any>("/api/kurikulum"),
         ]);
 
-        if (statRes.ok) {
-          const data = await statRes.json();
-          setStatistik(data);
+        if (statData) {
+          setStats(statData);
         }
 
-        if (kurikulumRes.ok) {
-          const data = await kurikulumRes.json();
-          setMataKuliahCount(data.mata_kuliah?.length || 0);
+        if (kurikulumData) {
+          setMataKuliahCount(kurikulumData.mata_kuliah?.length || 0);
         }
       } catch (e) {
         console.error("Failed to fetch stats", e);
@@ -43,7 +42,7 @@ export default function AdminDashboardPage() {
   const cards = [
     {
       label: "Total Dosen",
-      value: dosenList.length,
+      value: stats?.total_dosen ?? "—",
       link: "/dashboard/admin/dosen",
       linkLabel: "Kelola Dosen",
       icon: HiOutlineUserGroup,
@@ -57,7 +56,7 @@ export default function AdminDashboardPage() {
     },
     {
       label: "Total Galeri",
-      value: galeriList.length,
+      value: stats?.total_galeri ?? "—",
       link: "/dashboard/admin/galeri",
       linkLabel: "Kelola Galeri",
       icon: HiOutlinePhoto,
@@ -71,7 +70,7 @@ export default function AdminDashboardPage() {
     },
     {
       label: "Mahasiswa Aktif",
-      value: statistik?.total_mahasiswa_aktif ?? "—",
+      value: stats?.total_mahasiswa_aktif ?? "—",
       icon: HiOutlineAcademicCap,
       bg: "bg-emerald-50",
       border: "border-emerald-100",
@@ -93,7 +92,7 @@ export default function AdminDashboardPage() {
     },
     {
       label: "Total Lulusan",
-      value: statistik?.total_lulusan ?? "—",
+      value: stats?.total_lulusan ?? "—",
       icon: HiOutlineTrophy,
       bg: "bg-violet-50",
       border: "border-violet-100",

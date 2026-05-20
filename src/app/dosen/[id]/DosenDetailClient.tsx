@@ -1,10 +1,13 @@
 "use client";
 
+import { useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import DosenProfile from "@/components/dosen/DosenProfile";
 
 export default function DosenDetailClient({ id }: { id: string }) {
-  const { dosenList } = useData();
+  const { dosenList, ensureDosenLoaded } = useData();
+
+  useEffect(() => { ensureDosenLoaded(); }, [ensureDosenLoaded]);
   
   const index = dosenList.findIndex((d) => d.id === id);
   const dosen = dosenList[index];

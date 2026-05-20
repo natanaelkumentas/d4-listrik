@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import { GaleriItem } from "@/data/galeri";
 import Modal from "@/components/universal/Modal";
@@ -8,7 +8,9 @@ import { HiOutlinePlus, HiOutlinePencilSquare, HiOutlineTrash, HiOutlineArrowUpT
 import Image from "next/image";
 
 export default function AdminGaleriPage() {
-  const { galeriList, addGaleri, updateGaleri, deleteGaleri } = useData();
+  const { galeriList, addGaleri, updateGaleri, deleteGaleri, ensureGaleriLoaded } = useData();
+
+  useEffect(() => { ensureGaleriLoaded(); }, [ensureGaleriLoaded]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<GaleriItem>>({});

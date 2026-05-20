@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageHero from "@/components/universal/PageHero";
 import GaleriFilter from "@/components/galeri/GaleriFilter";
 import GaleriCard from "@/components/galeri/GaleriCard";
@@ -8,7 +8,9 @@ import { useData } from "@/context/DataContext";
 import { HiInboxStack } from "react-icons/hi2";
 
 export default function GaleriPage() {
-  const { galeriList } = useData();
+  const { galeriList, ensureGaleriLoaded } = useData();
+
+  useEffect(() => { ensureGaleriLoaded(); }, [ensureGaleriLoaded]);
   const [filter, setFilter] = useState<"semua" | "fasilitas" | "tridharma">("semua");
   const [searchQuery, setSearchQuery] = useState("");
 

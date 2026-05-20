@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Modal from "@/components/universal/Modal";
 import { HiOutlinePlus, HiOutlinePencilSquare, HiOutlineTrash, HiOutlineArrowUpTray, HiOutlineDocumentText } from "react-icons/hi2";
+import { cachedFetch, invalidateCache } from "@/lib/fetchCache";
 
 interface MataKuliah { kode: string; nama: string; sks: number; semester: number; jenis: string | null; }
 interface Cpl { kode: string; deskripsi: string; }
@@ -24,29 +25,55 @@ export default function AdminKurikulumPage() {
   const [cplEditingKode, setCplEditingKode] = useState<string | null>(null);
   const [cplForm, setCplForm] = useState<Partial<Cpl>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isMkLoading, setIsMkLoading] = useState(false);
+  const [isCplLoading, setIsCplLoading] = useState(false);
+  const hasFetchedMK = useRef(false);
+  const hasFetchedCPL = useRef(false);
 
+  // Always fetch kurikulum aktif on mount
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchKurikulum = async () => {
       try {
-        const [kurikulumRes, mkRes, cplRes] = await Promise.all([
-          fetch("/api/kurikulum"), fetch("/api/mata-kuliah"), fetch("/api/cpl"),
-        ]);
-        if (kurikulumRes.ok) {
-          const data = await kurikulumRes.json();
+        const data = await cachedFetch<any>("/api/kurikulum");
+        if (data) {
           setKurikulum({ nama: data.kurikulum?.nama || "", deskripsi: data.kurikulum?.deskripsi || "", berlaku_sejak: data.kurikulum?.berlaku_sejak || "", file_url: data.kurikulum?.file_url || null });
         }
-        if (mkRes.ok) setMataKuliahList(await mkRes.json());
-        if (cplRes.ok) setCplList(await cplRes.json());
-      } catch (e) { console.error("Failed to fetch kurikulum data", e); }
+      } catch (e) { console.error("Failed to fetch kurikulum", e); }
       finally { setIsLoading(false); }
     };
-    fetchData();
+    fetchKurikulum();
   }, []);
+
+  // Lazy fetch mata kuliah when tab is first accessed
+  useEffect(() => {
+    if (activeTab !== "mataKuliah" || hasFetchedMK.current) return;
+    hasFetchedMK.current = true;
+    setIsMkLoading(true);
+    cachedFetch<MataKuliah[]>("/api/mata-kuliah")
+      .then(data => setMataKuliahList(data || []))
+      .catch(e => console.error("Failed to fetch mata kuliah", e))
+      .finally(() => setIsMkLoading(false));
+  }, [activeTab]);
+
+  // Lazy fetch CPL when tab is first accessed
+  useEffect(() => {
+    if (activeTab !== "cpl" || hasFetchedCPL.current) return;
+    hasFetchedCPL.current = true;
+    setIsCplLoading(true);
+    cachedFetch<Cpl[]>("/api/cpl")
+      .then(data => setCplList(data || []))
+      .catch(e => console.error("Failed to fetch CPL", e))
+      .finally(() => setIsCplLoading(false));
+  }, [activeTab]);
 
   const handleKurikulumSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const res = await fetch("/api/kurikulum", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(kurikulum) });
-    if (res.ok) { setKurikulumSaved(true); setTimeout(() => setKurikulumSaved(false), 3000); }
+    if (res.ok) { 
+      invalidateCache("/api/kurikulum");
+      setKurikulumSaved(true); 
+      setTimeout(() => setKurikulumSaved(false), 3000); 
+    }
   };
 
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,6 +87,7 @@ export default function AdminKurikulumPage() {
       if (res.ok) {
         const data = await res.json();
         setKurikulum(prev => ({ ...prev, file_url: data.url }));
+        invalidateCache("/api/kurikulum");
       }
     } catch (err) { console.error("Upload failed", err); }
     finally { setIsUploading(false); if (pdfInputRef.current) pdfInputRef.current.value = ""; }
@@ -69,10 +97,18 @@ export default function AdminKurikulumPage() {
     e.preventDefault();
     if (mkEditingKode) {
       const res = await fetch(`/api/mata-kuliah/${encodeURIComponent(mkEditingKode)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(mkForm) });
-      if (res.ok) { const u = await res.json(); setMataKuliahList(prev => prev.map(m => m.kode === mkEditingKode ? u : m)); }
+      if (res.ok) { 
+        const u = await res.json(); 
+        setMataKuliahList(prev => prev.map(m => m.kode === mkEditingKode ? u : m)); 
+        invalidateCache("/api/mata-kuliah");
+      }
     } else {
       const res = await fetch("/api/mata-kuliah", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(mkForm) });
-      if (res.ok) { const c = await res.json(); setMataKuliahList(prev => [...prev, c].sort((a, b) => a.semester - b.semester || a.kode.localeCompare(b.kode))); }
+      if (res.ok) { 
+        const c = await res.json(); 
+        setMataKuliahList(prev => [...prev, c].sort((a, b) => a.semester - b.semester || a.kode.localeCompare(b.kode))); 
+        invalidateCache("/api/mata-kuliah");
+      }
     }
     setMkModalOpen(false);
   };
@@ -80,17 +116,28 @@ export default function AdminKurikulumPage() {
   const handleMkDelete = async (kode: string) => {
     if (!confirm("Hapus mata kuliah ini?")) return;
     const res = await fetch(`/api/mata-kuliah/${encodeURIComponent(kode)}`, { method: "DELETE" });
-    if (res.ok) setMataKuliahList(prev => prev.filter(m => m.kode !== kode));
+    if (res.ok) {
+      setMataKuliahList(prev => prev.filter(m => m.kode !== kode));
+      invalidateCache("/api/mata-kuliah");
+    }
   };
 
   const handleCplSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cplEditingKode) {
       const res = await fetch(`/api/cpl/${encodeURIComponent(cplEditingKode)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deskripsi: cplForm.deskripsi }) });
-      if (res.ok) { const u = await res.json(); setCplList(prev => prev.map(c => c.kode === cplEditingKode ? u : c)); }
+      if (res.ok) { 
+        const u = await res.json(); 
+        setCplList(prev => prev.map(c => c.kode === cplEditingKode ? u : c)); 
+        invalidateCache("/api/cpl");
+      }
     } else {
       const res = await fetch("/api/cpl", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cplForm) });
-      if (res.ok) { const c = await res.json(); setCplList(prev => [...prev, c].sort((a, b) => a.kode.localeCompare(b.kode))); }
+      if (res.ok) { 
+        const c = await res.json(); 
+        setCplList(prev => [...prev, c].sort((a, b) => a.kode.localeCompare(b.kode))); 
+        invalidateCache("/api/cpl");
+      }
     }
     setCplModalOpen(false);
   };
@@ -98,15 +145,18 @@ export default function AdminKurikulumPage() {
   const handleCplDelete = async (kode: string) => {
     if (!confirm("Hapus CPL ini?")) return;
     const res = await fetch(`/api/cpl/${encodeURIComponent(kode)}`, { method: "DELETE" });
-    if (res.ok) setCplList(prev => prev.filter(c => c.kode !== kode));
+    if (res.ok) {
+      setCplList(prev => prev.filter(c => c.kode !== kode));
+      invalidateCache("/api/cpl");
+    }
   };
 
   if (isLoading) return <div className="text-center py-12 text-gray-400">Memuat data kurikulum...</div>;
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "kurikulum", label: "Kurikulum Aktif" },
-    { key: "mataKuliah", label: `Mata Kuliah (${mataKuliahList.length})` },
-    { key: "cpl", label: `CPL (${cplList.length})` },
+    { key: "mataKuliah", label: hasFetchedMK.current ? `Mata Kuliah (${mataKuliahList.length})` : "Mata Kuliah" },
+    { key: "cpl", label: hasFetchedCPL.current ? `CPL (${cplList.length})` : "CPL" },
   ];
 
   const inputCls = "w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500";
@@ -144,10 +194,20 @@ export default function AdminKurikulumPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Dokumen PDF Kurikulum</label>
             {kurikulum.file_url && (
-              <a href={kurikulum.file_url} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-primary-50 text-primary-700 text-sm font-medium hover:bg-primary-100 transition-colors mb-3">
-                <HiOutlineDocumentText className="w-5 h-5" /> Lihat PDF Saat Ini
-              </a>
+              <div className="flex items-center gap-2 mb-3">
+                <a href={kurikulum.file_url} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-primary-50 text-primary-700 text-sm font-medium hover:bg-primary-100 transition-colors">
+                  <HiOutlineDocumentText className="w-5 h-5" /> Lihat PDF Saat Ini
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setKurikulum(prev => ({ ...prev, file_url: null }))}
+                  className="inline-flex items-center justify-center p-2 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+                  title="Hapus dokumen PDF"
+                >
+                  <HiOutlineTrash className="w-5 h-5" />
+                </button>
+              </div>
             )}
             <div className="flex items-center gap-3">
               <input ref={pdfInputRef} type="file" accept="application/pdf" onChange={handlePdfUpload} className="hidden" id="pdf-upload" />
@@ -167,6 +227,10 @@ export default function AdminKurikulumPage() {
 
       {activeTab === "mataKuliah" && (
         <>
+          {isMkLoading ? (
+            <div className="text-center py-12 text-gray-400">Memuat data mata kuliah...</div>
+          ) : (
+          <>
           <div className="flex justify-end mb-4">
             <button onClick={() => { setMkEditingKode(null); setMkForm({ kode: "", nama: "", sks: 2, semester: 1, jenis: "Teori" }); setMkModalOpen(true); }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors shadow-sm">
@@ -215,11 +279,16 @@ export default function AdminKurikulumPage() {
               </div>
             </form>
           </Modal>
+          </>)}
         </>
       )}
 
       {activeTab === "cpl" && (
         <>
+          {isCplLoading ? (
+            <div className="text-center py-12 text-gray-400">Memuat data CPL...</div>
+          ) : (
+          <>
           <div className="flex justify-end mb-4">
             <button onClick={() => { setCplEditingKode(null); setCplForm({ kode: "", deskripsi: "" }); setCplModalOpen(true); }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors shadow-sm">
@@ -258,6 +327,7 @@ export default function AdminKurikulumPage() {
               </div>
             </form>
           </Modal>
+          </>)}
         </>
       )}
     </div>

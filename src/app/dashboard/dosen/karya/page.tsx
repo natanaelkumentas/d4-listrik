@@ -6,6 +6,7 @@ import { useData } from "@/context/DataContext";
 import { Dosen, KaryaItem } from "@/data/dosen";
 import Modal from "@/components/universal/Modal";
 import PersonLinker from "@/components/universal/PersonLinker";
+import { cachedFetch, invalidateCache } from "@/lib/fetchCache";
 import type { PersonLink } from "@/components/universal/PersonLinker";
 import { HiOutlinePlus, HiOutlineTrash, HiOutlineClock, HiOutlineCheckCircle, HiOutlineXCircle } from "react-icons/hi2";
 
@@ -32,7 +33,7 @@ const jenisLabels: Record<string, string> = {
 
 export default function DosenKaryaPage() {
   const { user } = useAuth();
-  const { dosenList } = useData();
+  const { dosenList, ensureDosenLoaded } = useData();
   const [dosen, setDosen] = useState<Dosen | null>(null);
   const [pendingList, setPendingList] = useState<PendingKarya[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -76,6 +77,10 @@ export default function DosenKaryaPage() {
   };
 
   useEffect(() => {
+    ensureDosenLoaded();
+  }, [ensureDosenLoaded]);
+
+  useEffect(() => {
     if (user && user.role === "dosen") {
       const d = dosenList.find((d) => d.nidn === user.nidn);
       if (d) setDosen(d);
@@ -87,13 +92,12 @@ export default function DosenKaryaPage() {
     const fetchData = async () => {
       try {
         const [pendingRes, dosenRes] = await Promise.all([
-          fetch("/api/karya-pending"),
-          fetch("/api/dosen"),
+          cachedFetch<PendingKarya[]>("/api/karya-pending"),
+          cachedFetch<any[]>("/api/dosen"),
         ]);
-        if (pendingRes.ok) setPendingList(await pendingRes.json());
-        if (dosenRes.ok) {
-          const data = await dosenRes.json();
-          setDosenOptions(data.map((d: {id: string; nama: string}) => ({ id: d.id, nama: d.nama })));
+        if (pendingRes) setPendingList(pendingRes);
+        if (dosenRes) {
+          setDosenOptions(dosenRes.map((d: {id: string; nama: string}) => ({ id: d.id, nama: d.nama })));
         }
       } catch (e) { console.error("Failed to fetch data", e); }
     };
@@ -128,6 +132,7 @@ export default function DosenKaryaPage() {
       });
 
       if (res.ok) {
+        invalidateCache("/api/karya-pending");
         setIsModalOpen(false);
         setSubmitSuccess(prev => !prev);
       }
@@ -137,7 +142,10 @@ export default function DosenKaryaPage() {
   const handleDeletePending = async (id: string) => {
     if (!confirm("Batalkan pengajuan ini?")) return;
     const res = await fetch(`/api/karya-pending/${id}`, { method: "DELETE" });
-    if (res.ok) setPendingList(prev => prev.filter(k => k.id !== id));
+    if (res.ok) {
+        invalidateCache("/api/karya-pending");
+        setPendingList(prev => prev.filter(k => k.id !== id));
+    }
   };
 
   const pendingOnly = pendingList.filter(k => k.status === "pending");

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { HiBolt, HiOutlineUser } from "react-icons/hi2";
+import { HiOutlineUser } from "react-icons/hi2";
 import { useAuth } from "@/context/AuthContext";
 
 const navLinks = [
@@ -32,8 +32,12 @@ export default function Navbar() {
         <div className="flex h-16 items-center justify-between gap-4">
           {/* Logo / Brand */}
           <Link href="/" className="flex items-center gap-3 group shrink-0">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary-600 to-primary-800 text-white font-bold text-sm shadow-md group-hover:shadow-lg transition-shadow">
-              <HiBolt className="text-lg" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white p-0.5 shadow-md group-hover:shadow-lg transition-shadow overflow-hidden">
+              <img
+                src="/images/logo-polimdo.png"
+                alt="Logo Polimdo"
+                className="h-full w-full object-contain"
+              />
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-bold text-primary-950 leading-tight">

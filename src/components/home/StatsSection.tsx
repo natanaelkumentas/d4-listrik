@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { HiAcademicCap, HiUserGroup, HiBookOpen, HiTrophy } from "react-icons/hi2";
+import { cachedFetch } from "@/lib/fetchCache";
 
 interface StatItem {
   label: string;
@@ -66,10 +67,9 @@ export default function StatsSection() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [statRes, dosenRes, kurikulumRes] = await Promise.all([
-          fetch("/api/statistik"),
-          fetch("/api/dosen"),
-          fetch("/api/kurikulum"),
+        const [statData, kurikulumData] = await Promise.all([
+          cachedFetch<any>("/api/statistik"),
+          cachedFetch<any>("/api/kurikulum"),
         ]);
 
         let mahasiswaAktif = 0;
@@ -77,21 +77,10 @@ export default function StatsSection() {
         let dosenCount = 0;
         let mataKuliahCount = 0;
 
-        if (statRes.ok) {
-          const data = await statRes.json();
-          mahasiswaAktif = data.total_mahasiswa_aktif || 0;
-          lulusan = data.total_lulusan || 0;
-        }
-
-        if (dosenRes.ok) {
-          const data = await dosenRes.json();
-          dosenCount = Array.isArray(data) ? data.length : 0;
-        }
-
-        if (kurikulumRes.ok) {
-          const data = await kurikulumRes.json();
-          mataKuliahCount = data.mata_kuliah?.length || 0;
-        }
+        mahasiswaAktif = statData.total_mahasiswa_aktif || 0;
+        lulusan = statData.total_lulusan || 0;
+        dosenCount = statData.total_dosen || 0;
+        mataKuliahCount = kurikulumData.mata_kuliah?.length || 0;
 
         setStats([
           { label: "Mahasiswa Aktif", value: mahasiswaAktif, suffix: "+", icon: <HiAcademicCap className="text-primary-600" /> },

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Modal from "@/components/universal/Modal";
 import PersonLinker from "@/components/universal/PersonLinker";
+import { cachedFetch, invalidateCache } from "@/lib/fetchCache";
 import type { PersonLink } from "@/components/universal/PersonLinker";
 import { HiOutlineCheck, HiOutlineXMark, HiOutlineTrash, HiOutlineClock, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlinePlus, HiOutlinePencilSquare } from "react-icons/hi2";
 
@@ -130,16 +131,13 @@ export default function AdminKaryaPage() {
   const fetchData = async () => {
     try {
       const [pendingRes, karyaRes, dosenRes] = await Promise.all([
-        fetch("/api/karya-pending"),
-        fetch("/api/karya"),
-        fetch("/api/dosen"),
+        cachedFetch<PendingKarya[]>("/api/karya-pending"),
+        cachedFetch<Karya[]>("/api/karya"),
+        cachedFetch<DosenOption[]>("/api/dosen"),
       ]);
-      if (pendingRes.ok) setPendingList(await pendingRes.json());
-      if (karyaRes.ok) setAllKarya(await karyaRes.json());
-      if (dosenRes.ok) {
-        const data = await dosenRes.json();
-        setDosenOptions(data.map((d: DosenOption) => ({ id: d.id, nama: d.nama })));
-      }
+      if (pendingRes) setPendingList(pendingRes);
+      if (karyaRes) setAllKarya(karyaRes);
+      if (dosenRes) setDosenOptions(dosenRes);
     } catch (e) { console.error("Failed to fetch karya data", e); }
     finally { setIsLoading(false); }
   };
@@ -153,7 +151,11 @@ export default function AdminKaryaPage() {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "approve" }),
     });
-    if (res.ok) fetchData();
+    if (res.ok) {
+        invalidateCache("/api/karya-pending");
+        invalidateCache("/api/karya");
+        fetchData();
+    }
   };
 
   const openRejectModal = (id: string) => { setRejectingId(id); setCatatan(""); setRejectModalOpen(true); };
@@ -164,13 +166,20 @@ export default function AdminKaryaPage() {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "reject", catatan_admin: catatan || null }),
     });
-    if (res.ok) { setRejectModalOpen(false); fetchData(); }
+    if (res.ok) { 
+        invalidateCache("/api/karya-pending");
+        setRejectModalOpen(false); 
+        fetchData(); 
+    }
   };
 
   const handleDeletePending = async (id: string) => {
     if (!confirm("Hapus pengajuan ini?")) return;
     const res = await fetch(`/api/karya-pending/${id}`, { method: "DELETE" });
-    if (res.ok) setPendingList(prev => prev.filter(k => k.id !== id));
+    if (res.ok) {
+        invalidateCache("/api/karya-pending");
+        setPendingList(prev => prev.filter(k => k.id !== id));
+    }
   };
 
   // ========== Karya CRUD ==========
@@ -205,20 +214,31 @@ export default function AdminKaryaPage() {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (res.ok) { setKaryaModalOpen(false); fetchData(); }
+      if (res.ok) { 
+        invalidateCache("/api/karya");
+        setKaryaModalOpen(false); 
+        fetchData(); 
+      }
     } else {
       const res = await fetch("/api/karya", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (res.ok) { setKaryaModalOpen(false); fetchData(); }
+      if (res.ok) { 
+        invalidateCache("/api/karya");
+        setKaryaModalOpen(false); 
+        fetchData(); 
+      }
     }
   };
 
   const handleDeleteKarya = async (id: string) => {
     if (!confirm("Hapus karya ini?")) return;
     const res = await fetch(`/api/karya/${id}`, { method: "DELETE" });
-    if (res.ok) setAllKarya(prev => prev.filter(k => k.id !== id));
+    if (res.ok) {
+        invalidateCache("/api/karya");
+        setAllKarya(prev => prev.filter(k => k.id !== id));
+    }
   };
 
   if (isLoading) return <div className="text-center py-12 text-gray-400">Memuat data karya...</div>;

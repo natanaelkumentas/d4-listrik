@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import { notFound, useParams } from "next/navigation";
 import Link from "next/link";
@@ -53,7 +54,10 @@ export default function KaryaDetailPage() {
   const kategori = params.kategori as string;
   const karyaId = params.karyaId as string;
 
-  const { dosenList } = useData();
+  const { dosenList, ensureDosenLoaded } = useData();
+
+  useEffect(() => { ensureDosenLoaded(); }, [ensureDosenLoaded]);
+
   const dosen = dosenList.find((d) => d.id === id);
 
   if (!dosen) return (
@@ -95,15 +99,30 @@ export default function KaryaDetailPage() {
     const md = (karya as any)?.metadata || {};
     const meta = (key: string) => md[key] ?? (karya as any)?.[key];
 
+    // Ensure the karya owner is always present in person lists with a profile link
+    const ownerPerson: PersonLink = { id: dosen.id, nama: dosen.nama };
+
+    const ensureOwnerInList = (persons: PersonLink | PersonLink[] | undefined): PersonLink[] => {
+      const list = persons ? (Array.isArray(persons) ? [...persons] : [persons]) : [];
+      if (!list.some(p => p.id === dosen.id)) {
+        list.unshift(ownerPerson);
+      }
+      return list;
+    };
+
+    const ensureOwnerAsSingle = (person: PersonLink | undefined): PersonLink => {
+      return person?.id ? person : ownerPerson;
+    };
+
     switch (jenis) {
       case "publikasi": {
         const jurnal = meta("jurnal") as string | undefined;
         const link = meta("link") as string | undefined;
-        const penulis = meta("penulis") as PersonLink | PersonLink[] | undefined;
+        const penulis = ensureOwnerInList(meta("penulis") as PersonLink | PersonLink[] | undefined);
         return (
           <>
             <InfoItem icon={HiOutlineBookOpen} label="Jurnal / Konferensi" value={jurnal} />
-            {penulis && <PersonBadgeList title="Penulis" persons={penulis} />}
+            <PersonBadgeList title="Penulis" persons={penulis} />
             {link && (
               <a href={link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors mt-2 text-primary-600">
                 <HiOutlineLink /> Kunjungi Tautan Publikasi
@@ -114,13 +133,13 @@ export default function KaryaDetailPage() {
       }
       case "penelitian": {
         const sumberDana = meta("sumberDana") as string | undefined;
-        const ketua = meta("ketua") as PersonLink | undefined;
+        const ketua = ensureOwnerAsSingle(meta("ketua") as PersonLink | undefined);
         const anggota = meta("anggota") as PersonLink[] | undefined;
         return (
           <>
             <InfoItem icon={HiOutlineBuildingOffice} label="Sumber Dana" value={sumberDana} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {ketua && <PersonBadgeList title="Ketua Peneliti" persons={ketua} />}
+              <PersonBadgeList title="Ketua Peneliti" persons={ketua} />
               {anggota && anggota.length > 0 && <PersonBadgeList title="Anggota" persons={anggota} />}
             </div>
             {karya.deskripsi && (
@@ -134,13 +153,13 @@ export default function KaryaDetailPage() {
       }
       case "pengabdian": {
         const mitra = meta("mitra") as string | undefined;
-        const ketua = meta("ketua") as PersonLink | undefined;
+        const ketua = ensureOwnerAsSingle(meta("ketua") as PersonLink | undefined);
         const anggota = meta("anggota") as PersonLink[] | undefined;
         return (
           <>
             <InfoItem icon={HiOutlineBuildingOffice} label="Mitra" value={mitra} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {ketua && <PersonBadgeList title="Ketua" persons={ketua} />}
+              <PersonBadgeList title="Ketua" persons={ketua} />
               {anggota && anggota.length > 0 && <PersonBadgeList title="Anggota" persons={anggota} />}
             </div>
             {karya.deskripsi && (
@@ -155,12 +174,12 @@ export default function KaryaDetailPage() {
       case "bukuAjar": {
         const penerbit = meta("penerbit") as string | undefined;
         const isbn = meta("isbn") as string | undefined;
-        const penulis = meta("penulis") as PersonLink | PersonLink[] | undefined;
+        const penulis = ensureOwnerInList(meta("penulis") as PersonLink | PersonLink[] | undefined);
         return (
           <>
             <InfoItem icon={HiOutlineBuildingOffice} label="Penerbit" value={penerbit} />
             <InfoItem icon={HiOutlineIdentification} label="ISBN" value={isbn} />
-            {penulis && <PersonBadgeList title="Penulis" persons={penulis} />}
+            <PersonBadgeList title="Penulis" persons={penulis} />
           </>
         );
       }

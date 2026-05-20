@@ -9,11 +9,15 @@ import Image from "next/image";
 
 export default function DosenProfilePage() {
   const { user } = useAuth();
-  const { dosenList, updateDosen } = useData();
+  const { dosenList, updateDosen, ensureDosenLoaded } = useData();
   const [formData, setFormData] = useState<Partial<Dosen>>({});
   const [isSaved, setIsSaved] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    ensureDosenLoaded();
+  }, [ensureDosenLoaded]);
 
   useEffect(() => {
     if (user && user.role === "dosen") {

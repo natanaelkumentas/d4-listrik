@@ -1,13 +1,16 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import { Dosen } from "@/data/dosen";
 import { GaleriItem } from "@/data/galeri";
+import { cachedFetch, invalidateCache } from "@/lib/fetchCache";
 
 interface DataContextType {
   dosenList: Dosen[];
   galeriList: GaleriItem[];
   isLoading: boolean;
+  isDosenLoaded: boolean;
+  isGaleriLoaded: boolean;
 
   // Dosen Actions
   addDosen: (dosen: Dosen, password?: string) => Promise<void>;
@@ -19,7 +22,11 @@ interface DataContextType {
   updateGaleri: (id: string, updatedItem: GaleriItem) => Promise<void>;
   deleteGaleri: (id: string) => Promise<void>;
 
-  // Refresh
+  // Lazy loaders — only fetch when first consumer needs the data
+  ensureDosenLoaded: () => void;
+  ensureGaleriLoaded: () => void;
+
+  // Force refresh
   refreshDosen: () => Promise<void>;
   refreshGaleri: () => Promise<void>;
 }
@@ -88,23 +95,37 @@ function transformGaleriFromApi(raw: any): GaleriItem {
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [dosenList, setDosenList] = useState<Dosen[]>([]);
   const [galeriList, setGaleriList] = useState<GaleriItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isDosenLoaded, setIsDosenLoaded] = useState(false);
+  const [isGaleriLoaded, setIsGaleriLoaded] = useState(false);
+
+  // Refs to prevent duplicate concurrent fetches
+  const dosenFetchRef = useRef<Promise<void> | null>(null);
+  const galeriFetchRef = useRef<Promise<void> | null>(null);
 
   const refreshDosen = useCallback(async () => {
     try {
-      // Fetch all dosen
-      const res = await fetch("/api/dosen");
-      if (!res.ok) throw new Error("Failed to fetch dosen");
-      const dosenRows = await res.json();
+      // Invalidate cache so we get fresh data after mutations
+      invalidateCache("/api/dosen");
+      invalidateCache("/api/karya");
 
-      // For each dosen, fetch their karya
-      const dosenWithKarya: Dosen[] = await Promise.all(
-        dosenRows.map(async (d: any) => {
-          const karyaRes = await fetch(`/api/karya?dosen_id=${d.id}`);
-          const karya = karyaRes.ok ? await karyaRes.json() : [];
-          return transformDosenFromApi({ ...d, karya });
-        })
-      );
+      // Fetch all dosen and all published karya in parallel
+      const [dosenRows, allKarya] = await Promise.all([
+        cachedFetch<any[]>("/api/dosen"),
+        cachedFetch<any[]>("/api/karya"),
+      ]);
+
+      // Group karya by dosen_id
+      const karyaByDosen = (allKarya || []).reduce((acc: Record<string, any[]>, k: any) => {
+        if (!acc[k.dosen_id]) acc[k.dosen_id] = [];
+        acc[k.dosen_id].push(k);
+        return acc;
+      }, {});
+
+      // For each dosen, attach their karya
+      const dosenWithKarya: Dosen[] = dosenRows.map((d: any) => {
+        const karya = karyaByDosen[d.id] || [];
+        return transformDosenFromApi({ ...d, karya });
+      });
 
       // Cross-reference: if a karya's metadata links other dosen,
       // add that karya to those dosen's lists too.
@@ -151,22 +172,36 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const refreshGaleri = useCallback(async () => {
     try {
-      const res = await fetch("/api/galeri");
-      if (!res.ok) throw new Error("Failed to fetch galeri");
-      const data = await res.json();
+      invalidateCache("/api/galeri");
+      const data = await cachedFetch<any[]>("/api/galeri");
       setGaleriList(data.map(transformGaleriFromApi));
     } catch (e) {
       console.error("Failed to fetch galeri", e);
     }
   }, []);
 
-  useEffect(() => {
-    const init = async () => {
-      await Promise.all([refreshDosen(), refreshGaleri()]);
-      setIsLoading(false);
-    };
-    init();
-  }, [refreshDosen, refreshGaleri]);
+  // Lazy loaders: only fetch when a consumer first needs the data
+  const ensureDosenLoaded = useCallback(() => {
+    if (isDosenLoaded || dosenFetchRef.current) return;
+    const promise = refreshDosen().then(() => {
+      setIsDosenLoaded(true);
+      dosenFetchRef.current = null;
+    });
+    dosenFetchRef.current = promise;
+  }, [isDosenLoaded, refreshDosen]);
+
+  const ensureGaleriLoaded = useCallback(() => {
+    if (isGaleriLoaded || galeriFetchRef.current) return;
+    const promise = refreshGaleri().then(() => {
+      setIsGaleriLoaded(true);
+      galeriFetchRef.current = null;
+    });
+    galeriFetchRef.current = promise;
+  }, [isGaleriLoaded, refreshGaleri]);
+
+  // isLoading is true only when data has been requested but hasn't arrived yet
+  const isLoading = (!isDosenLoaded && dosenFetchRef.current !== null) ||
+                    (!isGaleriLoaded && galeriFetchRef.current !== null);
 
   // --- Dosen Actions ---
   const addDosen = async (dosen: Dosen, password?: string) => {
@@ -277,8 +312,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   return (
     <DataContext.Provider value={{
       dosenList, galeriList, isLoading,
+      isDosenLoaded, isGaleriLoaded,
       addDosen, updateDosen, deleteDosen,
       addGaleri, updateGaleri, deleteGaleri,
+      ensureDosenLoaded, ensureGaleriLoaded,
       refreshDosen, refreshGaleri,
     }}>
       {children}

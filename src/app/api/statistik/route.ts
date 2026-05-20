@@ -2,22 +2,26 @@ import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
-// GET /api/statistik — Public: Get statistik_mahasiswa
+// GET /api/statistik — Public: Get statistik_mahasiswa + dosen/galeri counts
 export async function GET() {
   try {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("statistik_mahasiswa")
-      .select("*")
-      .eq("id", 1)
-      .single();
+    const [statResult, dosenResult, galeriResult] = await Promise.all([
+      supabase.from("statistik_mahasiswa").select("*").eq("id", 1).single(),
+      supabase.from("dosen").select("id", { count: "exact", head: true }),
+      supabase.from("galeri").select("id", { count: "exact", head: true }),
+    ]);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (statResult.error) {
+      return NextResponse.json({ error: statResult.error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json({
+      ...statResult.data,
+      total_dosen: dosenResult.count ?? 0,
+      total_galeri: galeriResult.count ?? 0,
+    });
   } catch {
     return NextResponse.json(
       { error: "Internal server error" },

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -27,32 +27,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    // Use admin client for storage upload (bypasses storage policies)
+    const adminSupabase = createAdminClient();
     const ext = file.name.split(".").pop();
     const prefix = galeriId || "gallery";
     const fileName = `${prefix}-${Date.now()}.${ext}`;
 
-    const { error: uploadError } = await supabase.storage
+    // Convert File to Buffer for Node.js compatibility
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const { error: uploadError } = await adminSupabase.storage
       .from("galeri")
-      .upload(fileName, file, {
+      .upload(fileName, buffer, {
         contentType: file.type,
         upsert: true,
       });
 
     if (uploadError) {
+      console.error("Storage upload error:", uploadError);
       return NextResponse.json(
-        { error: uploadError.message },
+        { error: `Upload gagal: ${uploadError.message}` },
         { status: 500 }
       );
     }
 
-    const { data: urlData } = supabase.storage
+    const { data: urlData } = adminSupabase.storage
       .from("galeri")
       .getPublicUrl(fileName);
 
     // If galeri_id is provided, append the URL to the galeri's foto_urls array
     if (galeriId) {
-      const { data: galeri } = await supabase
+      const { data: galeri } = await adminSupabase
         .from("galeri")
         .select("foto_urls")
         .eq("id", galeriId)
@@ -60,7 +66,7 @@ export async function POST(request: NextRequest) {
 
       if (galeri) {
         const updatedUrls = [...(galeri.foto_urls || []), urlData.publicUrl];
-        await supabase
+        await adminSupabase
           .from("galeri")
           .update({ foto_urls: updatedUrls })
           .eq("id", galeriId);
@@ -71,7 +77,8 @@ export async function POST(request: NextRequest) {
       url: urlData.publicUrl,
       message: "Image uploaded successfully",
     });
-  } catch {
+  } catch (err) {
+    console.error("Upload galeri error:", err);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

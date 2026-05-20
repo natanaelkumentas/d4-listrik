@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -26,29 +26,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    // Use admin client for storage upload (bypasses storage policies)
+    const adminSupabase = createAdminClient();
     const fileName = `kurikulum-${Date.now()}.pdf`;
 
-    const { error: uploadError } = await supabase.storage
+    // Convert File to Buffer for Node.js compatibility
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const { error: uploadError } = await adminSupabase.storage
       .from("kurikulum")
-      .upload(fileName, file, {
+      .upload(fileName, buffer, {
         contentType: file.type,
         upsert: true,
       });
 
     if (uploadError) {
+      console.error("Storage upload error:", uploadError);
       return NextResponse.json(
-        { error: uploadError.message },
+        { error: `Upload gagal: ${uploadError.message}` },
         { status: 500 }
       );
     }
 
-    const { data: urlData } = supabase.storage
+    const { data: urlData } = adminSupabase.storage
       .from("kurikulum")
       .getPublicUrl(fileName);
 
     // Update kurikulum_aktif with the new file URL
-    await supabase
+    await adminSupabase
       .from("kurikulum_aktif")
       .update({ file_url: urlData.publicUrl })
       .eq("id", 1);
@@ -57,7 +63,8 @@ export async function POST(request: NextRequest) {
       url: urlData.publicUrl,
       message: "PDF uploaded successfully",
     });
-  } catch {
+  } catch (err) {
+    console.error("Upload kurikulum error:", err);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
