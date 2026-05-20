@@ -21,6 +21,7 @@ export default function AdminDosenPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [bidangInput, setBidangInput] = useState("");
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -28,6 +29,7 @@ export default function AdminDosenPage() {
   const handleOpenAdd = () => {
     setEditingId(null);
     setFormData({ nama: "", nidn: "", email: "", bidangKeahlian: [] });
+    setBidangInput("");
     setPassword("");
     setShowPassword(false);
     setFormError("");
@@ -38,6 +40,7 @@ export default function AdminDosenPage() {
   const handleOpenEdit = (dosen: Dosen) => {
     setEditingId(dosen.id);
     setFormData(dosen);
+    setBidangInput(dosen.bidangKeahlian?.join(", ") || "");
     setPassword("");
     setShowPassword(false);
     setFormError("");
@@ -350,8 +353,12 @@ export default function AdminDosenPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Bidang Keahlian (pisahkan dengan koma)</label>
             <input
               type="text"
-              value={formData.bidangKeahlian?.join(", ") || ""}
-              onChange={(e) => setFormData({ ...formData, bidangKeahlian: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
+              value={bidangInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                setBidangInput(val);
+                setFormData({ ...formData, bidangKeahlian: val.split(",").map(s => s.trim()).filter(Boolean) });
+              }}
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="Sistem Tenaga Listrik, Energi Terbarukan"
             />
