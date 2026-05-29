@@ -80,10 +80,7 @@ export default function LoginPage() {
   if (user) return null; // Avoid flicker while redirecting
 
   return (
-    <div 
-      className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-cover bg-center bg-no-repeat bg-[#131b26]"
-      style={{ backgroundImage: "url('/images/login-bg.png')" }}
-    >
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-[#1a2232]">
       <div className="sm:mx-auto sm:w-full sm:max-w-md animate-fade-in-up flex flex-col items-center">
         {/* Campus Logo */}
         <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-white border border-gray-100 p-2.5 shadow-md">
