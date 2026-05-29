@@ -5,11 +5,17 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { HiOutlineLockClosed, HiOutlineEnvelope } from "react-icons/hi2";
 
+interface LogoData {
+  file_url: string;
+  alt_text: string | null;
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [logo, setLogo] = useState<LogoData | null>(null);
   const router = useRouter();
   const { login, user } = useAuth();
 
@@ -20,6 +26,36 @@ export default function LoginPage() {
       else router.push("/dashboard/dosen");
     }
   }, [user, router]);
+
+  // Fetch logo config
+  useEffect(() => {
+    async function fetchLogo() {
+      try {
+        const res = await fetch("/api/config?section=logo");
+        if (res.ok) {
+          const config = await res.json();
+          if (config?.logo) setLogo(config.logo);
+        }
+      } catch (e) {
+        console.error("Failed to load logo", e);
+      }
+    }
+    fetchLogo();
+  }, []);
+
+  // Hide navbar and footer
+  useEffect(() => {
+    const nav = document.querySelector("nav");
+    const footer = document.querySelector("footer");
+    
+    if (nav) nav.style.display = "none";
+    if (footer) footer.style.display = "none";
+    
+    return () => {
+      if (nav) nav.style.display = "";
+      if (footer) footer.style.display = "";
+    };
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,11 +80,20 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md animate-fade-in-up">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-primary-950">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md animate-fade-in-up flex flex-col items-center">
+        {/* Campus Logo */}
+        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-white border border-gray-100 p-2.5 shadow-md">
+          <img
+            src={logo?.file_url || "/images/logo-polimdo.png"}
+            alt={logo?.alt_text || "Logo Campus"}
+            className="h-full w-full object-contain"
+          />
+        </div>
+        
+        <h2 className="text-center text-2xl font-extrabold text-primary-950">
           Portal Sistem
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
+        <p className="mt-1.5 text-center text-sm text-gray-500">
           Masuk ke dashboard manajemen
         </p>
       </div>
@@ -104,7 +149,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isLoading ? "Memproses..." : "Masuk"}
               </button>
@@ -112,7 +157,6 @@ export default function LoginPage() {
           </form>
           
           <div className="mt-6 text-xs text-center text-gray-500 border-t border-gray-100 pt-6">
-            <p className="mb-1 font-semibold text-gray-700">Login menggunakan akun Supabase Auth</p>
             <p>Gunakan email dan password yang terdaftar.</p>
           </div>
         </div>
