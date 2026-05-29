@@ -83,7 +83,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-[#1a2232]">
       <div className="sm:mx-auto sm:w-full sm:max-w-md animate-fade-in-up flex flex-col items-center">
         {/* Campus Logo */}
-        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-white border border-gray-100 p-2.5 shadow-md">
+        <div className="mb-4 flex h-20 w-20 items-center justify-center">
           <img
             src={logo?.file_url || "/images/logo-polimdo.png"}
             alt={logo?.alt_text || "Logo Campus"}
