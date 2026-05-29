@@ -25,7 +25,7 @@ interface DosenOption {
 export default function ConfigManagement() {
   const router = useRouter();
   const { showSuccess, showError } = useNotification();
-  const [activeTab, setActiveTab] = useState<"prodi" | "visimisi" | "sambutan_footer">("prodi");
+  const [activeTab, setActiveTab] = useState<"prodi" | "visimisi" | "sambutan" | "footer">("prodi");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -234,35 +234,76 @@ export default function ConfigManagement() {
     }
   };
 
-  // Save Kajur, Kaprodi & Footer
-  const handleSaveSambutanFooter = async (e: React.FormEvent) => {
+  // Save Sambutan Kajur
+  const handleSaveSambutanKajur = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const p1 = fetch("/api/config", {
+      const res = await fetch("/api/config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ section: "sambutan_kajur", data: sambutanKajur }),
       });
-      const p2 = fetch("/api/config", {
+
+      if (!res.ok) throw new Error("Gagal menyimpan sambutan Kajur");
+
+      invalidateCache("/api/config");
+      await fetchData();
+      showSuccess("Sambutan Ketua Jurusan berhasil disimpan!");
+      router.refresh();
+    } catch (err) {
+      console.error(err);
+      showError("Gagal menyimpan Sambutan Ketua Jurusan.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Save Sambutan Kaprodi
+  const handleSaveSambutanKaprodi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ section: "sambutan_kaprodi", data: sambutanKaprodi }),
       });
-      const p3 = fetch("/api/config", {
+
+      if (!res.ok) throw new Error("Gagal menyimpan sambutan Kaprodi");
+
+      invalidateCache("/api/config");
+      await fetchData();
+      showSuccess("Sambutan Ketua Program Studi berhasil disimpan!");
+      router.refresh();
+    } catch (err) {
+      console.error(err);
+      showError("Gagal menyimpan Sambutan Ketua Program Studi.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Save Footer
+  const handleSaveFooter = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ section: "footer", data: footer }),
       });
 
-      await Promise.all([p1, p2, p3]);
+      if (!res.ok) throw new Error("Gagal menyimpan footer");
+
       invalidateCache("/api/config");
       await fetchData();
-      showSuccess("Sambutan Kajur, Kaprodi & Footer berhasil disimpan!");
+      showSuccess("Footer berhasil disimpan!");
       router.refresh();
     } catch (err) {
       console.error(err);
-      showError("Gagal menyimpan data.");
+      showError("Gagal menyimpan Footer.");
     } finally {
       setIsSubmitting(false);
     }
@@ -456,14 +497,24 @@ export default function ConfigManagement() {
           Visi, Misi & Tujuan
         </button>
         <button
-          onClick={() => setActiveTab("sambutan_footer")}
+          onClick={() => setActiveTab("sambutan")}
           className={`px-4 py-2.5 text-sm font-medium rounded-t-xl transition-colors cursor-pointer ${
-            activeTab === "sambutan_footer"
+            activeTab === "sambutan"
               ? "bg-primary-50 text-primary-700 border-b-2 border-primary-600"
               : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
           }`}
         >
-          Sambutan & Footer
+          Sambutan
+        </button>
+        <button
+          onClick={() => setActiveTab("footer")}
+          className={`px-4 py-2.5 text-sm font-medium rounded-t-xl transition-colors cursor-pointer ${
+            activeTab === "footer"
+              ? "bg-primary-50 text-primary-700 border-b-2 border-primary-600"
+              : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          Footer
         </button>
       </div>
 
@@ -815,11 +866,11 @@ export default function ConfigManagement() {
         );
       })()}
 
-      {/* SAMBUTAN & FOOTER TAB */}
-      {activeTab === "sambutan_footer" && (
-        <form onSubmit={handleSaveSambutanFooter} className="space-y-6 max-w-2xl">
+      {/* SAMBUTAN TAB */}
+      {activeTab === "sambutan" && (
+        <div className="space-y-8 max-w-2xl">
           {/* Sambutan Kajur */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
+          <form onSubmit={handleSaveSambutanKajur} className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
             <h3 className="font-bold text-primary-950 text-base border-b border-gray-50 pb-2">Sambutan Ketua Jurusan</h3>
             <div>
               <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Pilih Dosen Kajur</label>
@@ -842,10 +893,20 @@ export default function ConfigManagement() {
                 placeholder="Tulis sambutan ketua jurusan..."
               />
             </div>
-          </div>
+
+            <div className="flex justify-end pt-4 border-t border-gray-50">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md cursor-pointer transition-colors"
+              >
+                {isSubmitting ? "Menyimpan..." : "Simpan Sambutan Kajur"}
+              </button>
+            </div>
+          </form>
 
           {/* Sambutan Kaprodi */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
+          <form onSubmit={handleSaveSambutanKaprodi} className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
             <h3 className="font-bold text-primary-950 text-base border-b border-gray-50 pb-2">Sambutan Ketua Program Studi</h3>
             <div>
               <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Pilih Dosen Kaprodi</label>
@@ -868,8 +929,23 @@ export default function ConfigManagement() {
                 placeholder="Tulis sambutan ketua program studi..."
               />
             </div>
-          </div>
 
+            <div className="flex justify-end pt-4 border-t border-gray-50">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md cursor-pointer transition-colors"
+              >
+                {isSubmitting ? "Menyimpan..." : "Simpan Sambutan Kaprodi"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* FOOTER TAB */}
+      {activeTab === "footer" && (
+        <form onSubmit={handleSaveFooter} className="space-y-6 max-w-2xl">
           <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
             <h3 className="font-bold text-primary-950 text-base border-b border-gray-50 pb-2">Footer Program Studi</h3>
             <div>
@@ -903,7 +979,7 @@ export default function ConfigManagement() {
               disabled={isSubmitting}
               className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-sm font-semibold shadow-md cursor-pointer"
             >
-              {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+              {isSubmitting ? "Menyimpan..." : "Simpan Footer"}
             </button>
           </div>
         </form>
