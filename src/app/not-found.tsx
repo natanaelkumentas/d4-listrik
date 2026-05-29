@@ -34,6 +34,19 @@ export default function NotFound() {
     fetchConfig();
   }, []);
 
+  useEffect(() => {
+    const nav = document.querySelector("nav");
+    const footer = document.querySelector("footer");
+    
+    if (nav) nav.style.display = "none";
+    if (footer) footer.style.display = "none";
+    
+    return () => {
+      if (nav) nav.style.display = "";
+      if (footer) footer.style.display = "";
+    };
+  }, []);
+
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-primary-950 via-primary-950/95 to-primary-900/90 relative overflow-hidden px-4">
       {/* Decorative background blobs */}
