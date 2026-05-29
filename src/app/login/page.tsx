@@ -80,7 +80,10 @@ export default function LoginPage() {
   if (user) return null; // Avoid flicker while redirecting
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div 
+      className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-cover bg-center bg-no-repeat bg-[#131b26]"
+      style={{ backgroundImage: "url('/images/login-bg.png')" }}
+    >
       <div className="sm:mx-auto sm:w-full sm:max-w-md animate-fade-in-up flex flex-col items-center">
         {/* Campus Logo */}
         <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-white border border-gray-100 p-2.5 shadow-md">
@@ -91,10 +94,10 @@ export default function LoginPage() {
           />
         </div>
         
-        <h2 className="text-center text-2xl font-extrabold text-primary-950">
+        <h2 className="text-center text-2xl font-extrabold text-white">
           Portal Sistem
         </h2>
-        <p className="mt-1.5 text-center text-sm text-gray-500">
+        <p className="mt-1.5 text-center text-sm text-slate-300">
           Masuk ke dashboard manajemen
         </p>
       </div>
