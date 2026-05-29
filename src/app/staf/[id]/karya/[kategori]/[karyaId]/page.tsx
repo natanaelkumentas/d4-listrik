@@ -315,6 +315,9 @@ export default function KaryaDetailPage() {
   };
 
   const photos = (karya as any).foto_urls || [];
+  const md = (karya as any).metadata || {};
+  const sampulDepan = md.sampul_depan as string | undefined;
+  const sampulBelakang = md.sampul_belakang as string | undefined;
 
   return (
     <>
@@ -369,7 +372,40 @@ export default function KaryaDetailPage() {
                 </div>
               </div>
 
-              {/* === 3. PHOTOS (if any) === */}
+              {/* === 3. BOOK COVERS (if any) === */}
+              {kategori === "bukuAjar" && (sampulDepan || sampulBelakang) && (
+                <div className="p-6 sm:p-8 border-b border-gray-100 bg-white">
+                  <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-6">Sampul Buku</h2>
+                  <div className="flex flex-wrap gap-8 justify-start">
+                    {sampulDepan && (
+                      <div className="flex flex-col items-center">
+                        <span className="text-xs font-semibold text-gray-500 mb-2">Sampul Depan</span>
+                        <div className="relative w-40 h-56 sm:w-48 sm:h-64 rounded-xl overflow-hidden shadow-md border border-gray-200 bg-gray-50">
+                          <img
+                            src={sampulDepan}
+                            alt="Sampul Depan"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {sampulBelakang && (
+                      <div className="flex flex-col items-center">
+                        <span className="text-xs font-semibold text-gray-500 mb-2">Sampul Belakang</span>
+                        <div className="relative w-40 h-56 sm:w-48 sm:h-64 rounded-xl overflow-hidden shadow-md border border-gray-200 bg-gray-50">
+                          <img
+                            src={sampulBelakang}
+                            alt="Sampul Belakang"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* === 4. PHOTOS (if any) === */}
               {photos.length > 0 && (
                 <div className="p-6 sm:p-8 bg-white">
                   <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-6">Dokumentasi Terkait</h2>
