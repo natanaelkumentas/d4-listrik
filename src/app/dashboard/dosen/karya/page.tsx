@@ -79,6 +79,10 @@ export default function DosenKaryaPage() {
   const [metaNomorSertifikat, setMetaNomorSertifikat] = useState("");
   const [metaPenyelenggara, setMetaPenyelenggara] = useState("");
   const [metaLinkSertifikat, setMetaLinkSertifikat] = useState("");
+  const [metaSampulDepan, setMetaSampulDepan] = useState("");
+  const [metaSampulBelakang, setMetaSampulBelakang] = useState("");
+  const [isUploadingDepan, setIsUploadingDepan] = useState(false);
+  const [isUploadingBelakang, setIsUploadingBelakang] = useState(false);
   const [fotoUrls, setFotoUrls] = useState<string[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -91,6 +95,7 @@ export default function DosenKaryaPage() {
     setMetaMitra(""); setMetaPenerbit(""); setMetaIsbn("");
     setMetaJenisHki(""); setMetaNomorSertifikat("");
     setMetaPenyelenggara(""); setMetaLinkSertifikat("");
+    setMetaSampulDepan(""); setMetaSampulBelakang("");
   };
 
   const buildMetadata = (jenis: string): Record<string, unknown> => {
@@ -98,7 +103,7 @@ export default function DosenKaryaPage() {
       case "publikasi": return { jurnal: metaJurnal, link: metaLink, penulis: metaPenulis };
       case "penelitian": return { sumberDana: metaSumberDana, ketua: metaKetua[0] || null, anggota: metaAnggota };
       case "pengabdian": return { mitra: metaMitra, ketua: metaKetua[0] || null, anggota: metaAnggota };
-      case "bukuAjar": return { penerbit: metaPenerbit, isbn: metaIsbn, penulis: metaPenulis };
+      case "bukuAjar": return { penerbit: metaPenerbit, isbn: metaIsbn, penulis: metaPenulis, sampul_depan: metaSampulDepan, sampul_belakang: metaSampulBelakang };
       case "hki": return { jenisHki: metaJenisHki, nomorSertifikat: metaNomorSertifikat };
       case "sertifikasi": return { penyelenggara: metaPenyelenggara, linkSertifikat: metaLinkSertifikat };
       default: return {};
@@ -166,6 +171,34 @@ export default function DosenKaryaPage() {
       }
     } catch (err) { console.error("Photo upload failed", err); }
     finally { setIsUploadingPhoto(false); if (photoInputRef.current) photoInputRef.current.value = ""; }
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>, position: "depan" | "belakang") => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (position === "depan") setIsUploadingDepan(true);
+    else setIsUploadingBelakang(true);
+
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("jenis", "bukuAjar");
+      const res = await fetch("/api/upload/karya", { method: "POST", body: fd });
+      if (res.ok) {
+        const data = await res.json();
+        if (position === "depan") setMetaSampulDepan(data.url);
+        else setMetaSampulBelakang(data.url);
+        showSuccess(`Sampul ${position === "depan" ? "depan" : "belakang"} berhasil diunggah!`);
+      } else {
+        throw new Error("Gagal mengunggah gambar");
+      }
+    } catch (err: any) {
+      showError(err.message || "Terjadi kesalahan saat mengunggah.");
+    } finally {
+      if (position === "depan") setIsUploadingDepan(false);
+      else setIsUploadingBelakang(false);
+      e.target.value = "";
+    }
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -564,6 +597,65 @@ export default function DosenKaryaPage() {
                   <input type="text" value={metaIsbn} onChange={e => setMetaIsbn(e.target.value)} className={inputCls} placeholder="978-..." />
                 </div>
                 <PersonLinker label="Penulis" dosenOptions={dosenOptions} value={metaPenulis} onChange={setMetaPenulis} />
+
+                {/* Book Covers Upload Options */}
+                <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4 mt-2">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Sampul Depan</label>
+                    {metaSampulDepan ? (
+                      <div className="relative w-28 h-36 rounded-xl overflow-hidden border border-gray-200 group shadow-sm">
+                        <img src={metaSampulDepan} alt="Sampul Depan" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setMetaSampulDepan("")}
+                          className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold hover:bg-black/70 cursor-pointer"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center w-28 h-36 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 hover:border-primary-400 transition-colors">
+                        <span className="text-[10px] text-gray-400 font-semibold text-center px-2">Upload Sampul Depan</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleCoverUpload(e, "depan")}
+                          className="hidden"
+                          disabled={isUploadingDepan}
+                        />
+                        {isUploadingDepan && <span className="text-[9px] text-primary-500 mt-1 animate-pulse">Mengupload...</span>}
+                      </label>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Sampul Belakang</label>
+                    {metaSampulBelakang ? (
+                      <div className="relative w-28 h-36 rounded-xl overflow-hidden border border-gray-200 group shadow-sm">
+                        <img src={metaSampulBelakang} alt="Sampul Belakang" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setMetaSampulBelakang("")}
+                          className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold hover:bg-black/70 cursor-pointer"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center w-28 h-36 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 hover:border-primary-400 transition-colors">
+                        <span className="text-[10px] text-gray-400 font-semibold text-center px-2">Upload Sampul Belakang</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleCoverUpload(e, "belakang")}
+                          className="hidden"
+                          disabled={isUploadingBelakang}
+                        />
+                        {isUploadingBelakang && <span className="text-[9px] text-primary-500 mt-1 animate-pulse">Mengupload...</span>}
+                      </label>
+                    )}
+                  </div>
+                </div>
               </>
             )}
 
@@ -677,6 +769,29 @@ export default function DosenKaryaPage() {
                     {metaVal("penerbit") && <div><span className="text-xs text-gray-500 font-medium">Penerbit:</span> <span className="text-sm text-gray-800">{metaVal("penerbit")}</span></div>}
                     {metaVal("isbn") && <div><span className="text-xs text-gray-500 font-medium">ISBN:</span> <span className="text-sm text-gray-800">{metaVal("isbn")}</span></div>}
                     {metaVal("jenisHki") && <div><span className="text-xs text-gray-500 font-medium">Jenis HKI:</span> <span className="text-sm text-gray-800">{metaVal("jenisHki")}</span></div>}
+
+                     {/* Sampul Buku Ajar */}
+                     {(metaVal("sampul_depan") || metaVal("sampul_belakang")) && (
+                       <div className="flex gap-4 mt-3 pb-2">
+                         {metaVal("sampul_depan") && (
+                           <div>
+                             <span className="text-xs text-gray-500 font-medium block mb-1">Sampul Depan:</span>
+                             <div className="w-20 h-28 rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-gray-50">
+                               <img src={metaVal("sampul_depan")} alt="Sampul Depan" className="w-full h-full object-cover" />
+                             </div>
+                           </div>
+                         )}
+                         {metaVal("sampul_belakang") && (
+                           <div>
+                             <span className="text-xs text-gray-500 font-medium block mb-1">Sampul Belakang:</span>
+                             <div className="w-20 h-28 rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-gray-50">
+                               <img src={metaVal("sampul_belakang")} alt="Sampul Belakang" className="w-full h-full object-cover" />
+                             </div>
+                           </div>
+                         )}
+                       </div>
+                     )}
+
                     {metaVal("nomorSertifikat") && <div><span className="text-xs text-gray-500 font-medium">Nomor Sertifikat:</span> <span className="text-sm text-gray-800">{metaVal("nomorSertifikat")}</span></div>}
                     {metaVal("penyelenggara") && <div><span className="text-xs text-gray-500 font-medium">Penyelenggara:</span> <span className="text-sm text-gray-800">{metaVal("penyelenggara")}</span></div>}
                     {metaVal("linkSertifikat") && <div><span className="text-xs text-gray-500 font-medium">Link Sertifikat:</span> <a href={metaVal("linkSertifikat")} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:underline break-all">{metaVal("linkSertifikat")}</a></div>}
