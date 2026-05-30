@@ -876,7 +876,7 @@ export default function ConfigManagement() {
 
       {/* SAMBUTAN TAB */}
       {activeTab === "sambutan" && (
-        <div className="space-y-8 max-w-2xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start max-w-5xl">
           {/* Sambutan Kajur */}
           <form onSubmit={handleSaveSambutanKajur} className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
             <h3 className="font-bold text-primary-950 text-base border-b border-gray-50 pb-2">Sambutan Ketua Jurusan</h3>
