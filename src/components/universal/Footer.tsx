@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { cachedFetch } from "@/lib/fetchCache";
 import IconRenderer from "@/lib/icons";
 
@@ -44,6 +45,7 @@ export default function Footer() {
   const [kontak, setKontak] = useState<KontakItem[]>([]);
   const [logo, setLogo] = useState<LogoData | null>(null);
   const [prodiInfo, setProdiInfo] = useState<ProdiInfoData | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     const fetchFooterConfig = async () => {
@@ -59,6 +61,24 @@ export default function Footer() {
     };
     fetchFooterConfig();
   }, []);
+
+  const isDashboard = pathname?.startsWith("/dashboard");
+
+  if (isDashboard) {
+    return (
+      <footer className="bg-primary-950 text-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+          <p className="text-center text-primary-400 text-xs">
+            {footer?.copyright ? (
+              `© ${new Date().getFullYear()} ${footer.copyright.replace(/^(©\s*(\d{4})?\s*|(\d{4})\s*)/i, "").trim()}`
+            ) : (
+              `© ${new Date().getFullYear()}`
+            )}
+          </p>
+        </div>
+      </footer>
+    );
+  }
 
   return (
     <footer className="bg-primary-950 text-white">
