@@ -526,138 +526,146 @@ export default function ConfigManagement() {
 
       {/* PRODI TAB */}
       {activeTab === "prodi" && (
-        <form onSubmit={handleSaveProdi} className="space-y-6 max-w-2xl">
-          <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
-            <h3 className="font-bold text-primary-950 text-base border-b border-gray-50 pb-2">Informasi Umum Prodi</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSaveProdi} className="space-y-6 max-w-5xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            {/* COLUMN 1: Informasi Umum Prodi */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
+              <h3 className="font-bold text-primary-950 text-base border-b border-gray-50 pb-2">Informasi Umum Prodi</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Nama Prodi</label>
+                  <input
+                    type="text"
+                    required
+                    value={prodiInfo.nama_prodi}
+                    onChange={(e) => setProdiInfo({ ...prodiInfo, nama_prodi: e.target.value })}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Singkatan / Alt</label>
+                  <input
+                    type="text"
+                    required
+                    value={prodiInfo.nama_prodi_alt}
+                    onChange={(e) => setProdiInfo({ ...prodiInfo, nama_prodi_alt: e.target.value })}
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Nama Prodi</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Kampus / Institusi</label>
                 <input
                   type="text"
                   required
-                  value={prodiInfo.nama_prodi}
-                  onChange={(e) => setProdiInfo({ ...prodiInfo, nama_prodi: e.target.value })}
+                  value={prodiInfo.kampus}
+                  onChange={(e) => setProdiInfo({ ...prodiInfo, kampus: e.target.value })}
                   className={inputCls}
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Singkatan / Alt</label>
-                <input
-                  type="text"
+                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Deskripsi Singkat Prodi</label>
+                <textarea
+                  rows={6}
                   required
-                  value={prodiInfo.nama_prodi_alt}
-                  onChange={(e) => setProdiInfo({ ...prodiInfo, nama_prodi_alt: e.target.value })}
-                  className={inputCls}
+                  value={prodiInfo.deskripsi}
+                  onChange={(e) => setProdiInfo({ ...prodiInfo, deskripsi: e.target.value })}
+                  className={inputCls + " resize-none"}
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Kampus / Institusi</label>
-              <input
-                type="text"
-                required
-                value={prodiInfo.kampus}
-                onChange={(e) => setProdiInfo({ ...prodiInfo, kampus: e.target.value })}
-                className={inputCls}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Deskripsi Singkat Prodi</label>
-              <textarea
-                rows={4}
-                required
-                value={prodiInfo.deskripsi}
-                onChange={(e) => setProdiInfo({ ...prodiInfo, deskripsi: e.target.value })}
-                className={inputCls + " resize-none"}
-              />
-            </div>
-          </div>
-
-          <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
-            <h3 className="font-bold text-primary-950 text-base border-b border-gray-50 pb-2">Logo Program Studi</h3>
-            <div className="flex items-center gap-6">
-              <div className="w-20 h-20 rounded-xl border border-gray-100 flex items-center justify-center bg-gray-50 p-2 shrink-0">
-                {logo.logo_url ? (
-                  <img src={logo.logo_url} alt="Logo Prodi" className="max-w-full max-h-full object-contain" />
-                ) : (
-                  <GlobeIcon className="w-8 h-8 text-gray-400" />
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  ref={logoInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoUpload}
-                  className="hidden"
-                  id="logo-upload"
-                />
-                <button
-                  type="button"
-                  onClick={() => logoInputRef.current?.click()}
-                  disabled={isSubmitting}
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 rounded-xl text-xs font-semibold cursor-pointer"
-                >
-                  <UploadIcon className="w-4 h-4" /> Ganti Logo
-                </button>
-                {logo.logo_url && (
-                  <button
-                    type="button"
-                    onClick={() => setLogo({ logo_url: "" })}
-                    disabled={isSubmitting}
-                    className="inline-flex items-center gap-2 px-4 py-2 border border-red-200 text-red-700 bg-white hover:bg-red-50 rounded-xl text-xs font-semibold cursor-pointer"
-                  >
-                    <TrashIcon className="w-4 h-4" /> Hapus Logo
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
-            <h3 className="font-bold text-primary-950 text-base border-b border-gray-50 pb-2">Foto Latar Hero (Home Background)</h3>
-            <div className="flex flex-col gap-4">
-              <div className="w-full h-48 rounded-xl border border-gray-100 flex items-center justify-center bg-gray-50 overflow-hidden relative">
-                {prodiInfo.hero_bg_url ? (
-                  <img src={prodiInfo.hero_bg_url} alt="Hero Background" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="text-center w-full h-full relative flex items-center justify-center">
-                    <img src="/images/hero-bg.jpg" alt="Default Hero Background" className="w-full h-full object-cover opacity-50 absolute inset-0" />
-                    <div className="relative z-10 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg text-xs font-medium text-gray-600 shadow-sm border border-gray-100">
-                      Menggunakan Gambar Default (public/images/hero-bg.jpg)
-                    </div>
+            {/* COLUMN 2: Logo and Hero Background Stack */}
+            <div className="space-y-6">
+              {/* Logo Program Studi */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
+                <h3 className="font-bold text-primary-950 text-base border-b border-gray-50 pb-2">Logo Program Studi</h3>
+                <div className="flex items-center gap-6">
+                  <div className="w-20 h-20 rounded-xl border border-gray-100 flex items-center justify-center bg-gray-50 p-2 shrink-0">
+                    {logo.logo_url ? (
+                      <img src={logo.logo_url} alt="Logo Prodi" className="max-w-full max-h-full object-contain" />
+                    ) : (
+                      <GlobeIcon className="w-8 h-8 text-gray-400" />
+                    )}
                   </div>
-                )}
+                  <div className="flex items-center gap-3">
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                      id="logo-upload"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={isSubmitting}
+                      className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 rounded-xl text-xs font-semibold cursor-pointer"
+                    >
+                      <UploadIcon className="w-4 h-4" /> Ganti Logo
+                    </button>
+                    {logo.logo_url && (
+                      <button
+                        type="button"
+                        onClick={() => setLogo({ logo_url: "" })}
+                        disabled={isSubmitting}
+                        className="inline-flex items-center gap-2 px-4 py-2 border border-red-200 text-red-700 bg-white hover:bg-red-50 rounded-xl text-xs font-semibold cursor-pointer"
+                      >
+                        <TrashIcon className="w-4 h-4" /> Hapus Logo
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <input
-                  ref={heroBgInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleHeroBgUpload}
-                  className="hidden"
-                  id="hero-bg-upload"
-                />
-                <button
-                  type="button"
-                  onClick={() => heroBgInputRef.current?.click()}
-                  disabled={isSubmitting}
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 rounded-xl text-xs font-semibold cursor-pointer"
-                >
-                  <UploadIcon className="w-4 h-4" /> Unggah Foto Latar
-                </button>
-                {prodiInfo.hero_bg_url && (
-                  <button
-                    type="button"
-                    onClick={() => setProdiInfo({ ...prodiInfo, hero_bg_url: "" })}
-                    disabled={isSubmitting}
-                    className="inline-flex items-center gap-2 px-4 py-2 border border-red-200 text-red-700 bg-white hover:bg-red-50 rounded-xl text-xs font-semibold cursor-pointer"
-                  >
-                    <TrashIcon className="w-4 h-4" /> Hapus Foto Latar
-                  </button>
-                )}
+
+              {/* Foto Latar Hero (Home Background) */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
+                <h3 className="font-bold text-primary-950 text-base border-b border-gray-50 pb-2">Foto Latar Hero (Home Background)</h3>
+                <div className="flex flex-col gap-4">
+                  <div className="w-full h-48 rounded-xl border border-gray-100 flex items-center justify-center bg-gray-50 overflow-hidden relative">
+                    {prodiInfo.hero_bg_url ? (
+                      <img src={prodiInfo.hero_bg_url} alt="Hero Background" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-center w-full h-full relative flex items-center justify-center">
+                        <img src="/images/hero-bg.jpg" alt="Default Hero Background" className="w-full h-full object-cover opacity-50 absolute inset-0" />
+                        <div className="relative z-10 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg text-xs font-medium text-gray-600 shadow-sm border border-gray-100">
+                          Menggunakan Gambar Default (public/images/hero-bg.jpg)
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      ref={heroBgInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleHeroBgUpload}
+                      className="hidden"
+                      id="hero-bg-upload"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => heroBgInputRef.current?.click()}
+                      disabled={isSubmitting}
+                      className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 rounded-xl text-xs font-semibold cursor-pointer"
+                    >
+                      <UploadIcon className="w-4 h-4" /> Unggah Foto Latar
+                    </button>
+                    {prodiInfo.hero_bg_url && (
+                      <button
+                        type="button"
+                        onClick={() => setProdiInfo({ ...prodiInfo, hero_bg_url: "" })}
+                        disabled={isSubmitting}
+                        className="inline-flex items-center gap-2 px-4 py-2 border border-red-200 text-red-700 bg-white hover:bg-red-50 rounded-xl text-xs font-semibold cursor-pointer"
+                      >
+                        <TrashIcon className="w-4 h-4" /> Hapus Foto Latar
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -666,7 +674,7 @@ export default function ConfigManagement() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-sm font-semibold shadow-md cursor-pointer"
+              className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-sm font-semibold shadow-md cursor-pointer disabled:opacity-50"
             >
               {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
             </button>
