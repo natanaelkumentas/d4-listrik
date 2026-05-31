@@ -41,7 +41,7 @@ export default function ChartsSection() {
         setSelectedSemNotFound(data.semester_not_found);
         if (data.per_level && data.per_level.length > 0) {
           const formatted = data.per_level.map((row: any) => ({
-            name: `Tingkat ${row.semester_level}`,
+            name: `Semester ${row.semester_level}`,
             "Jumlah Mahasiswa": row.total_mahasiswa_aktif || 0,
           }));
           setMahasiswaData(formatted);
@@ -125,12 +125,12 @@ export default function ChartsSection() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto animate-fade-in-up delay-100">
           
-          {/* Card 1: Mahasiswa per Tingkat */}
+          {/* Card 1: Mahasiswa per Semester */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-lg flex flex-col justify-between">
             <div>
               <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4 mb-6 pb-4 border-b border-gray-50">
                 <div className="space-y-2.5">
-                  <h3 className="text-lg font-bold text-primary-950">Statistik Mahasiswa per Tingkat</h3>
+                  <h3 className="text-lg font-bold text-primary-950">Statistik Mahasiswa per Semester</h3>
                   
                   {/* Semester graph selectors */}
                   <div className="flex flex-wrap items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100 w-fit">

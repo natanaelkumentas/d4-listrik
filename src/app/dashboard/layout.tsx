@@ -54,8 +54,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="pt-20 pb-12 min-h-screen bg-gray-50 flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 shrink-0 px-4 md:px-6 mb-8 md:mb-0">
+      {/* Sidebar (Desktop Only) */}
+      <aside className="hidden md:block w-64 shrink-0 px-4 md:px-6 mb-8 md:mb-0">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sticky top-24">
           <div className="mb-6 px-2">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
@@ -89,7 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="mt-8 pt-4 border-t border-gray-100">
             <button
               onClick={logout}
-              className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+              className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
             >
               <HiOutlineArrowRightOnRectangle className="w-5 h-5 text-red-500" />
               Keluar

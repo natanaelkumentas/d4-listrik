@@ -420,7 +420,7 @@ export default function StatistikManagement() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-50 pb-4">
               <div>
                 <h3 className="font-bold text-primary-950">
-                  Statistik Mahasiswa Aktif per Semester Tingkat
+                  Statistik Mahasiswa Aktif per Semester
                 </h3>
                 <p className="text-xs text-gray-400 mt-1">
                   Pilih semester untuk melihat atau memperbarui data statistik.
@@ -495,7 +495,7 @@ export default function StatistikManagement() {
                     className="space-y-1.5 p-4 rounded-xl border border-gray-50 bg-gray-50/50"
                   >
                     <label className="block text-xs font-bold text-gray-500 uppercase">
-                      Tingkat {row.semester_level}
+                      Semester {row.semester_level}
                     </label>
                     <input
                       type="number"

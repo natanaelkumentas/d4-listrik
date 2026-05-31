@@ -30,7 +30,7 @@ interface ProdiInfoData {
 export default function Navbar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const [logo, setLogo] = useState<LogoData | null>(null);
   const [prodiInfo, setProdiInfo] = useState<ProdiInfoData | null>(null);
@@ -48,8 +48,12 @@ export default function Navbar() {
     fetchNavConfig();
   }, []);
 
-  const isActive = (href: string) => {
+  const isLinkActive = (href: string) => {
     if (href === "/") return pathname === "/";
+    if (href.startsWith("/dashboard")) {
+      const role = user?.role;
+      return pathname === href || (pathname.startsWith(href) && href !== `/dashboard/${role}`);
+    }
     return pathname.startsWith(href);
   };
 
@@ -61,6 +65,44 @@ export default function Navbar() {
   };
 
   const portalHref = getPortalHref();
+
+  const isDashboardPage = pathname.startsWith("/dashboard");
+
+  const adminLinks = [
+    { href: "/dashboard/admin", label: "Dashboard" },
+    { href: "/dashboard/admin/staf", label: "Staf" },
+    { href: "/dashboard/admin/kurikulum", label: "Kurikulum" },
+    { href: "/dashboard/admin/karya", label: "Karya" },
+    { href: "/dashboard/admin/fasilitas", label: "Fasilitas" },
+    { href: "/dashboard/admin/kegiatan", label: "Kegiatan" },
+    { href: "/dashboard/admin/statistik", label: "Statistik" },
+    { href: "/dashboard/admin/config", label: "Konfigurasi Website" },
+  ];
+
+  const pegawaiLinks = [
+    { href: "/dashboard/pegawai", label: "Dashboard" },
+    { href: "/dashboard/pegawai/kurikulum", label: "Kurikulum" },
+    { href: "/dashboard/pegawai/fasilitas", label: "Fasilitas" },
+    { href: "/dashboard/pegawai/kegiatan", label: "Kegiatan" },
+    { href: "/dashboard/pegawai/statistik", label: "Statistik" },
+    { href: "/dashboard/pegawai/config", label: "Konfigurasi Website" },
+  ];
+
+  const dosenLinks = [
+    { href: "/dashboard/dosen", label: "Profil Saya" },
+    { href: "/dashboard/dosen/karya", label: "Karya & Kontribusi" },
+    { href: "/dashboard/dosen/kegiatan", label: "Kegiatan" },
+  ];
+
+  const dashboardLinks = user
+    ? user.role === "admin"
+      ? adminLinks
+      : user.role === "pegawai"
+      ? pegawaiLinks
+      : dosenLinks
+    : [];
+
+  const activeMobileLinks = (isDashboardPage && user) ? dashboardLinks : navLinks;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass shadow-sm">
@@ -92,7 +134,7 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  isActive(link.href)
+                  isLinkActive(link.href)
                     ? "bg-primary-600 text-white shadow-md"
                     : "text-gray-700 hover:bg-primary-50 hover:text-primary-700"
                 }`}
@@ -148,17 +190,17 @@ export default function Navbar() {
       {/* Mobile menu */}
       <div
         className={`md:hidden overflow-hidden transition-all duration-300 ${
-          mobileOpen ? "max-h-80 border-t border-gray-100" : "max-h-0"
+          mobileOpen ? "max-h-[500px] border-t border-gray-100" : "max-h-0"
         }`}
       >
         <div className="px-4 py-3 space-y-1 bg-white/95 backdrop-blur-md">
-          {navLinks.map((link) => (
+          {activeMobileLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               onClick={() => setMobileOpen(false)}
               className={`block px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                isActive(link.href)
+                isLinkActive(link.href)
                   ? "bg-primary-600 text-white"
                   : "text-gray-700 hover:bg-primary-50"
               }`}
@@ -166,16 +208,38 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
-          <div className="pt-2 mt-2 border-t border-gray-100">
-            <Link
-              href={portalHref}
-              onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
-            >
-              <HiOutlineUser className="w-4 h-4" />
-              {user ? "Ke Dashboard" : "Masuk Portal"}
-            </Link>
-          </div>
+          
+          {isDashboardPage && user ? (
+            <div className="pt-2 mt-2 border-t border-gray-100 flex flex-col gap-2">
+              <Link
+                href="/"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                Kembali ke Website
+              </Link>
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  logout();
+                }}
+                className="flex w-full items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-red-50 text-red-600 hover:bg-red-100 cursor-pointer"
+              >
+                Keluar
+              </button>
+            </div>
+          ) : (
+            <div className="pt-2 mt-2 border-t border-gray-100">
+              <Link
+                href={portalHref}
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                <HiOutlineUser className="w-4 h-4" />
+                {user ? "Ke Dashboard" : "Masuk Portal"}
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </nav>
