@@ -17,8 +17,8 @@ export default function HeroSection() {
   useEffect(() => {
     const fetchHeroConfig = async () => {
       try {
-        const config = await cachedFetch<any>("/api/config?section=all");
-        if (config?.prodi_info) setProdiInfo(config.prodi_info);
+        const data = await cachedFetch<any>("/api/prodi-info");
+        if (data) setProdiInfo(data);
       } catch (e) {
         console.error("Failed to load hero config", e);
       }

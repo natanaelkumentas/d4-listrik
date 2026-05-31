@@ -24,13 +24,14 @@ export default function NotFound() {
   useEffect(() => {
     async function fetchConfig() {
       try {
-        const res = await fetch("/api/config?section=all");
-        if (res.ok) {
-          const config = await res.json();
-          if (config?.logo) setLogo(config.logo);
-          if (config?.prodi_info) setProdiInfo(config.prodi_info);
-          if (config?.footer) setFooter(config.footer);
-        }
+        const [logoRes, prodiRes, footerRes] = await Promise.all([
+          fetch("/api/logo").then((r) => r.json()),
+          fetch("/api/prodi-info").then((r) => r.json()),
+          fetch("/api/footer").then((r) => r.json()),
+        ]);
+        if (logoRes) setLogo(logoRes);
+        if (prodiRes) setProdiInfo(prodiRes);
+        if (footerRes) setFooter(footerRes);
       } catch (e) {
         console.error("Failed to load not-found page config", e);
       }

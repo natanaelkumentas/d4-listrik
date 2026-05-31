@@ -52,11 +52,16 @@ export default function Footer() {
   useEffect(() => {
     const fetchFooterConfig = async () => {
       try {
-        const config = await cachedFetch<any>("/api/config?section=all");
-        if (config?.footer) setFooter(config.footer);
-        if (config?.kontak) setKontak(config.kontak);
-        if (config?.logo) setLogo(config.logo);
-        if (config?.prodi_info) setProdiInfo(config.prodi_info);
+        const [footerRes, logoRes, prodiRes, configRes] = await Promise.all([
+          cachedFetch<any>("/api/footer"),
+          cachedFetch<any>("/api/logo"),
+          cachedFetch<any>("/api/prodi-info"),
+          cachedFetch<any>("/api/config?section=kontak"),
+        ]);
+        if (footerRes) setFooter(footerRes);
+        if (logoRes) setLogo(logoRes);
+        if (prodiRes) setProdiInfo(prodiRes);
+        if (configRes?.kontak) setKontak(configRes.kontak);
       } catch (e) {
         console.error("Failed to load footer config", e);
       }

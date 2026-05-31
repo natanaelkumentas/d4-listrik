@@ -60,41 +60,41 @@ export default function ConfigManagement() {
 
   const fetchData = async () => {
     try {
-      const [configData, dosenData] = await Promise.all([
-        fetch("/api/config?section=all").then((r) => r.json()),
+      const [prodiRes, logoRes, sambutanRes, footerRes, configRes, dosenData] = await Promise.all([
+        fetch("/api/prodi-info").then((r) => r.json()),
+        fetch("/api/logo").then((r) => r.json()),
+        fetch("/api/sambutan").then((r) => r.json()),
+        fetch("/api/footer").then((r) => r.json()),
+        fetch("/api/config?section=kontak").then((r) => r.json()),
         fetch("/api/dosen").then((r) => r.json()),
       ]);
 
-      if (configData) {
-        if (configData.prodi_info) {
-          setProdiInfo({
-            nama_prodi: configData.prodi_info.nama || "",
-            nama_prodi_alt: configData.prodi_info.nama_alternatif || "",
-            kampus: configData.prodi_info.nama_kampus || "",
-            deskripsi: configData.prodi_info.deskripsi || "",
-            hero_bg_url: configData.prodi_info.hero_bg_url || "",
-          });
-        }
-        if (configData.logo) {
-          setLogo({
-            logo_url: configData.logo.file_url || "",
-          });
-        }
-        if (configData.sambutan_kajur) {
-          setSambutanKajur({
-            kutipan: configData.sambutan_kajur.kutipan || "",
-            dosen_id: configData.sambutan_kajur.dosen_id || "",
-          });
-        }
-        if (configData.sambutan_kaprodi) {
-          setSambutanKaprodi({
-            kutipan: configData.sambutan_kaprodi.kutipan || "",
-            dosen_id: configData.sambutan_kaprodi.dosen_id || "",
-          });
-        }
-        if (configData.footer) setFooter(configData.footer);
-        if (configData.kontak) setKontakList(configData.kontak);
+      if (prodiRes) {
+        setProdiInfo({
+          nama_prodi: prodiRes.nama || "",
+          nama_prodi_alt: prodiRes.nama_alternatif || "",
+          kampus: prodiRes.nama_kampus || "",
+          deskripsi: prodiRes.deskripsi || "",
+          hero_bg_url: prodiRes.hero_bg_url || "",
+        });
       }
+      if (logoRes) {
+        setLogo({
+          logo_url: logoRes.file_url || "",
+        });
+      }
+      if (sambutanRes) {
+        setSambutanKajur({
+          kutipan: sambutanRes.sambutan_kajur?.kutipan || "",
+          dosen_id: sambutanRes.sambutan_kajur?.dosen_id || "",
+        });
+        setSambutanKaprodi({
+          kutipan: sambutanRes.sambutan_kaprodi?.kutipan || "",
+          dosen_id: sambutanRes.sambutan_kaprodi?.dosen_id || "",
+        });
+      }
+      if (footerRes) setFooter(footerRes);
+      if (configRes?.kontak) setKontakList(configRes.kontak);
 
       if (dosenData) {
         setDosenList(
@@ -128,17 +128,17 @@ export default function ConfigManagement() {
         hero_bg_url: prodiInfo.hero_bg_url || null,
       };
 
-      const res = await fetch("/api/config", {
+      const res = await fetch("/api/prodi-info", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section: "prodi_info", data: mappedProdiInfo }),
+        body: JSON.stringify(mappedProdiInfo),
       });
 
       if (!res.ok) {
         throw new Error("Gagal menyimpan informasi prodi");
       }
 
-      invalidateCache("/api/config");
+      invalidateCache("/api/prodi-info");
       await fetchData();
       showSuccess("Informasi Umum Prodi berhasil disimpan!");
       router.refresh();
@@ -160,17 +160,17 @@ export default function ConfigManagement() {
         alt_text: "Logo",
       };
 
-      const res = await fetch("/api/config", {
+      const res = await fetch("/api/logo", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section: "logo", data: mappedLogo }),
+        body: JSON.stringify(mappedLogo),
       });
 
       if (!res.ok) {
         throw new Error("Gagal menyimpan logo");
       }
 
-      invalidateCache("/api/config");
+      invalidateCache("/api/logo");
       await fetchData();
       showSuccess("Logo Program Studi berhasil disimpan!");
       router.refresh();
@@ -187,25 +187,18 @@ export default function ConfigManagement() {
     e.preventDefault();
     setIsSubmittingHeroBg(true);
     try {
-      const mappedProdiInfo = {
-        nama: prodiInfo.nama_prodi,
-        nama_alternatif: prodiInfo.nama_prodi_alt,
-        nama_kampus: prodiInfo.kampus,
-        deskripsi: prodiInfo.deskripsi,
-        hero_bg_url: prodiInfo.hero_bg_url || null,
-      };
-
-      const res = await fetch("/api/config", {
+      const res = await fetch("/api/hero-background", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section: "prodi_info", data: mappedProdiInfo }),
+        body: JSON.stringify({ hero_bg_url: prodiInfo.hero_bg_url || null }),
       });
 
       if (!res.ok) {
         throw new Error("Gagal menyimpan foto latar hero");
       }
 
-      invalidateCache("/api/config");
+      invalidateCache("/api/hero-background");
+      invalidateCache("/api/prodi-info");
       await fetchData();
       showSuccess("Foto Latar Hero berhasil disimpan!");
       router.refresh();
@@ -281,7 +274,7 @@ export default function ConfigManagement() {
     e.preventDefault();
     setIsSubmittingKajur(true);
     try {
-      const res = await fetch("/api/config", {
+      const res = await fetch("/api/sambutan", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ section: "sambutan_kajur", data: sambutanKajur }),
@@ -289,7 +282,7 @@ export default function ConfigManagement() {
 
       if (!res.ok) throw new Error("Gagal menyimpan sambutan Kajur");
 
-      invalidateCache("/api/config");
+      invalidateCache("/api/sambutan");
       await fetchData();
       showSuccess("Sambutan Ketua Jurusan berhasil disimpan!");
       router.refresh();
@@ -306,7 +299,7 @@ export default function ConfigManagement() {
     e.preventDefault();
     setIsSubmittingKaprodi(true);
     try {
-      const res = await fetch("/api/config", {
+      const res = await fetch("/api/sambutan", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ section: "sambutan_kaprodi", data: sambutanKaprodi }),
@@ -314,7 +307,7 @@ export default function ConfigManagement() {
 
       if (!res.ok) throw new Error("Gagal menyimpan sambutan Kaprodi");
 
-      invalidateCache("/api/config");
+      invalidateCache("/api/sambutan");
       await fetchData();
       showSuccess("Sambutan Ketua Program Studi berhasil disimpan!");
       router.refresh();
@@ -331,15 +324,15 @@ export default function ConfigManagement() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/config", {
+      const res = await fetch("/api/footer", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section: "footer", data: footer }),
+        body: JSON.stringify(footer),
       });
 
       if (!res.ok) throw new Error("Gagal menyimpan footer");
 
-      invalidateCache("/api/config");
+      invalidateCache("/api/footer");
       await fetchData();
       showSuccess("Footer berhasil disimpan!");
       router.refresh();

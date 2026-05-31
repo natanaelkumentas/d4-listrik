@@ -38,9 +38,12 @@ export default function Navbar() {
   useEffect(() => {
     const fetchNavConfig = async () => {
       try {
-        const config = await cachedFetch<any>("/api/config?section=all");
-        if (config?.logo) setLogo(config.logo);
-        if (config?.prodi_info) setProdiInfo(config.prodi_info);
+        const [logoData, prodiInfoData] = await Promise.all([
+          cachedFetch<any>("/api/logo"),
+          cachedFetch<any>("/api/prodi-info"),
+        ]);
+        if (logoData) setLogo(logoData);
+        if (prodiInfoData) setProdiInfo(prodiInfoData);
       } catch (e) {
         console.error("Failed to load nav config", e);
       }

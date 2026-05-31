@@ -32,10 +32,10 @@ export default function LoginPage() {
   useEffect(() => {
     async function fetchLogo() {
       try {
-        const res = await fetch("/api/config?section=logo");
+        const res = await fetch("/api/logo");
         if (res.ok) {
-          const config = await res.json();
-          if (config?.logo) setLogo(config.logo);
+          const logoData = await res.json();
+          if (logoData) setLogo(logoData);
         }
       } catch (e) {
         console.error("Failed to load logo", e);

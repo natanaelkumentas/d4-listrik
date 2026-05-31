@@ -23,7 +23,7 @@ export default function SambutanSection() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const config = await cachedFetch<any>("/api/config?section=all");
+        const config = await cachedFetch<any>("/api/sambutan");
         if (config?.sambutan_kajur) setSambutanKajur(config.sambutan_kajur);
         if (config?.sambutan_kaprodi) setSambutanKaprodi(config.sambutan_kaprodi);
       } catch (e) {
