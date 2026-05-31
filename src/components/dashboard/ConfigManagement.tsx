@@ -9,16 +9,41 @@ import { invalidateCache } from "@/lib/fetchCache";
 import ComboBox from "@/components/universal/ComboBox";
 import { useNotification } from "@/context/NotificationContext";
 import TablePagination from "@/components/universal/TablePagination";
+import IconRenderer from "@/lib/icons";
 
 interface DosenOption {
   id: string;
   nama: string;
 }
 
+const iconOptions = [
+  { id: "FaMapMarkerAlt", nama: "FaMapMarkerAlt (Map/Address)" },
+  { id: "FaEnvelope", nama: "FaEnvelope (Envelope/Email)" },
+  { id: "FaPhone", nama: "FaPhone (Phone)" },
+  { id: "FaInstagram", nama: "FaInstagram (Instagram)" },
+  { id: "FaFacebook", nama: "FaFacebook (Facebook)" },
+  { id: "FaYoutube", nama: "FaYoutube (YouTube)" },
+  { id: "FaTwitter", nama: "FaTwitter (Twitter)" },
+  { id: "FaGlobe", nama: "FaGlobe (Globe/Website)" },
+  { id: "HiMapPin", nama: "HiMapPin (Pin Map)" },
+  { id: "HiPhone", nama: "HiPhone (Phone Alt)" },
+  { id: "HiEnvelope", nama: "HiEnvelope (Envelope Alt)" },
+  { id: "HiOutlineUserGroup", nama: "HiOutlineUserGroup (Group Outline)" },
+  { id: "HiOutlinePhoto", nama: "HiOutlinePhoto (Image Outline)" },
+  { id: "HiOutlineAcademicCap", nama: "HiOutlineAcademicCap (Graduation Cap Outline)" },
+  { id: "HiOutlineBookOpen", nama: "HiOutlineBookOpen (Book Outline)" },
+  { id: "HiOutlineTrophy", nama: "HiOutlineTrophy (Trophy Outline)" },
+  { id: "HiOutlinePencilSquare", nama: "HiOutlinePencilSquare (Pencil Outline)" },
+  { id: "HiAcademicCap", nama: "HiAcademicCap (Graduation Cap)" },
+  { id: "HiUserGroup", nama: "HiUserGroup (Group)" },
+  { id: "HiBookOpen", nama: "HiBookOpen (Book)" },
+  { id: "HiTrophy", nama: "HiTrophy (Trophy)" },
+];
+
 export default function ConfigManagement() {
   const router = useRouter();
   const { showSuccess, showError } = useNotification();
-  const [activeTab, setActiveTab] = useState<"prodi" | "sambutan" | "footer">("prodi");
+  const [activeTab, setActiveTab] = useState<"prodi" | "sambutan" | "footer" | "kontak">("prodi");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingProdiInfo, setIsSubmittingProdiInfo] = useState(false);
@@ -44,9 +69,10 @@ export default function ConfigManagement() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [kontakForm, setKontakForm] = useState({
-    tipe: "",
-    label: "",
-    url_atau_nomor: "",
+    nama: "",
+    nilai: "",
+    link: "",
+    icon: "FaGlobe",
     urutan: 1,
   });
 
@@ -350,9 +376,10 @@ export default function ConfigManagement() {
   const handleOpenKontakAdd = () => {
     setEditingId(null);
     setKontakForm({
-      tipe: "",
-      label: "",
-      url_atau_nomor: "",
+      nama: "",
+      nilai: "",
+      link: "",
+      icon: "FaGlobe",
       urutan: kontakList.length + 1,
     });
     setModalType("kontak");
@@ -362,10 +389,11 @@ export default function ConfigManagement() {
   const handleOpenKontakEdit = (k: any) => {
     setEditingId(k.id);
     setKontakForm({
-      tipe: k.tipe,
-      label: k.label,
-      url_atau_nomor: k.url_atau_nomor,
-      urutan: k.urutan,
+      nama: k.nama || "",
+      nilai: k.nilai || "",
+      link: k.link || "",
+      icon: k.icon || "FaGlobe",
+      urutan: k.urutan || 1,
     });
     setModalType("kontak");
     setIsModalOpen(true);
@@ -492,11 +520,21 @@ export default function ConfigManagement() {
         >
           Footer
         </button>
+        <button
+          onClick={() => setActiveTab("kontak")}
+          className={`px-4 py-2.5 text-sm font-medium rounded-t-xl transition-colors cursor-pointer ${
+            activeTab === "kontak"
+              ? "bg-primary-50 text-primary-700 border-b-2 border-primary-600"
+              : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          Kontak
+        </button>
       </div>
 
       {/* PRODI TAB */}
       {activeTab === "prodi" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch max-w-5xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch w-full">
           {/* COLUMN 1: Informasi Umum Prodi */}
           <form onSubmit={handleSaveProdiInfo} className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm flex flex-col justify-between h-full">
             <div className="space-y-4">
@@ -678,7 +716,7 @@ export default function ConfigManagement() {
 
       {/* SAMBUTAN TAB */}
       {activeTab === "sambutan" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start max-w-5xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start w-full">
           {/* Sambutan Kajur */}
           <form onSubmit={handleSaveSambutanKajur} className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
             <h3 className="font-bold text-primary-950 text-base border-b border-gray-50 pb-2">Sambutan Ketua Jurusan</h3>
@@ -755,7 +793,7 @@ export default function ConfigManagement() {
 
       {/* FOOTER TAB */}
       {activeTab === "footer" && (
-        <form onSubmit={handleSaveFooter} className="space-y-6 max-w-2xl">
+        <form onSubmit={handleSaveFooter} className="space-y-6 w-full">
           <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
             <h3 className="font-bold text-primary-950 text-base border-b border-gray-50 pb-2">Footer Program Studi</h3>
             <div>
@@ -795,13 +833,173 @@ export default function ConfigManagement() {
         </form>
       )}
 
+      {/* KONTAK TAB */}
+      {activeTab === "kontak" && (
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden w-full">
+          <div className="p-6 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h3 className="font-bold text-primary-950 text-base">Informasi Kontak</h3>
+              <p className="text-gray-500 text-xs mt-0.5">Kelola informasi kontak program studi yang ditampilkan di footer.</p>
+            </div>
+            <button
+              onClick={handleOpenKontakAdd}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer shadow-sm hover:shadow"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Tambah Kontak
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            {kontakList.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 text-sm">Belum ada data kontak. Silakan tambah data kontak baru.</div>
+            ) : (
+              <table className="w-full border-collapse text-left text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 font-medium">
+                    <th className="px-6 py-3 w-16">Urutan</th>
+                    <th className="px-6 py-3">Ikon</th>
+                    <th className="px-6 py-3">Nama</th>
+                    <th className="px-6 py-3">Nilai</th>
+                    <th className="px-6 py-3">Link</th>
+                    <th className="px-6 py-3 w-28 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {[...kontakList].sort((a, b) => (a.urutan || 0) - (b.urutan || 0)).map((k) => (
+                    <tr key={k.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 font-medium text-gray-500">{k.urutan}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+                            <IconRenderer name={k.icon || "FaGlobe"} className="w-4 h-4" />
+                          </div>
+                          <span className="text-xs text-gray-500 font-mono">{k.icon || "-"}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 font-semibold text-primary-950">{k.nama}</td>
+                      <td className="px-6 py-4 text-gray-600">{k.nilai}</td>
+                      <td className="px-6 py-4 text-gray-400 font-mono text-xs max-w-xs truncate" title={k.link || ""}>
+                        {k.link || "-"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => handleOpenKontakEdit(k)}
+                            className="p-2 text-primary-600 hover:bg-primary-50 rounded-xl transition-colors cursor-pointer"
+                            title="Edit"
+                          >
+                            <EditIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenDelete(k.id, "kontak")}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                            title="Hapus"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Editor Modal for List-items */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title=""
+        title={editingId ? "Edit Kontak" : "Tambah Kontak"}
       >
-        {null}
+        {modalType === "kontak" && (
+          <form onSubmit={handleModalSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Nama Kontak</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Email, Telepon, Alamat"
+                  value={kontakForm.nama}
+                  onChange={(e) => setKontakForm({ ...kontakForm, nama: e.target.value })}
+                  className={inputCls}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Urutan Tampilan</label>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  value={kontakForm.urutan}
+                  onChange={(e) => setKontakForm({ ...kontakForm, urutan: parseInt(e.target.value) || 1 })}
+                  className={inputCls}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Nilai / Isi Kontak</label>
+              <input
+                type="text"
+                required
+                placeholder="Contoh: Jl. Kampus Polimdo, email@polimdo.ac.id"
+                value={kontakForm.nilai}
+                onChange={(e) => setKontakForm({ ...kontakForm, nilai: e.target.value })}
+                className={inputCls}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Link Aksi (Opsional)</label>
+              <input
+                type="text"
+                placeholder="Contoh: mailto:email@polimdo.ac.id, tel:+628123456"
+                value={kontakForm.link}
+                onChange={(e) => setKontakForm({ ...kontakForm, link: e.target.value })}
+                className={inputCls}
+              />
+              <span className="text-[10px] text-gray-400 mt-1 block">Tautan URL ketika kontak diklik. Gunakan mailto: untuk email, tel: untuk telepon/wa.</span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Pilih Ikon</label>
+                <ComboBox
+                  options={iconOptions}
+                  value={kontakForm.icon}
+                  onChange={(val) => setKontakForm(prev => ({ ...prev, icon: val }))}
+                  placeholder="Pilih Ikon..."
+                />
+              </div>
+              <div className="mt-6 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 border border-primary-100 text-primary-600">
+                <IconRenderer name={kontakForm.icon} className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-sm font-semibold shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {isSubmitting ? "Menyimpan..." : "Simpan"}
+              </button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       <ConfirmDialog
