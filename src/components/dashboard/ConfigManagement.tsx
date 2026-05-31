@@ -10,13 +10,6 @@ import ComboBox from "@/components/universal/ComboBox";
 import { useNotification } from "@/context/NotificationContext";
 import TablePagination from "@/components/universal/TablePagination";
 
-interface VisiMisiRow {
-  id: string;
-  tipe: "visi" | "misi" | "tujuan";
-  konten: string;
-  urutan: number;
-}
-
 interface DosenOption {
   id: string;
   nama: string;
@@ -25,7 +18,7 @@ interface DosenOption {
 export default function ConfigManagement() {
   const router = useRouter();
   const { showSuccess, showError } = useNotification();
-  const [activeTab, setActiveTab] = useState<"prodi" | "visimisi" | "sambutan" | "footer">("prodi");
+  const [activeTab, setActiveTab] = useState<"prodi" | "sambutan" | "footer">("prodi");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingProdiInfo, setIsSubmittingProdiInfo] = useState(false);
@@ -43,24 +36,12 @@ export default function ConfigManagement() {
   const [dosenList, setDosenList] = useState<DosenOption[]>([]);
 
   // List arrays
-  const [visiMisiList, setVisiMisiList] = useState<VisiMisiRow[]>([]);
   const [kontakList, setKontakList] = useState<any[]>([]);
-
-  // Search & Pagination states
-  const [visimisiSearchQuery, setVisimisiSearchQuery] = useState("");
-  const [visimisiPage, setVisimisiPage] = useState(1);
-  const [visimisiPageSize, setVisimisiPageSize] = useState(10);
 
   // Modal / Editor states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<"visimisi" | "kontak" | "">("");
+  const [modalType, setModalType] = useState<"kontak" | "">("");
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  const [visiMisiForm, setVisiMisiForm] = useState({
-    tipe: "visi" as "visi" | "misi" | "tujuan",
-    konten: "",
-    urutan: 1,
-  });
 
   const [kontakForm, setKontakForm] = useState({
     tipe: "",
@@ -112,15 +93,6 @@ export default function ConfigManagement() {
           });
         }
         if (configData.footer) setFooter(configData.footer);
-        if (configData.visi_misi_tujuan) {
-          const mapped = configData.visi_misi_tujuan.map((row: any) => ({
-            id: row.id,
-            tipe: row.kategori,
-            konten: row.konten,
-            urutan: row.urutan,
-          }));
-          setVisiMisiList(mapped);
-        }
         if (configData.kontak) setKontakList(configData.kontak);
       }
 
@@ -381,35 +353,6 @@ export default function ConfigManagement() {
 
 
 
-  // Visi Misi Operations
-  const getNextUrutan = (tipe: "visi" | "misi" | "tujuan") => {
-    const items = visiMisiList.filter((item) => item.tipe === tipe);
-    if (items.length === 0) return 1;
-    return Math.max(...items.map((i) => i.urutan)) + 1;
-  };
-
-  const handleOpenVisiMisiAddType = (tipe: "visi" | "misi" | "tujuan") => {
-    setEditingId(null);
-    setVisiMisiForm({
-      tipe,
-      konten: "",
-      urutan: getNextUrutan(tipe),
-    });
-    setModalType("visimisi");
-    setIsModalOpen(true);
-  };
-
-  const handleOpenVisiMisiEdit = (row: VisiMisiRow) => {
-    setEditingId(row.id);
-    setVisiMisiForm({
-      tipe: row.tipe,
-      konten: row.konten,
-      urutan: row.urutan,
-    });
-    setModalType("visimisi");
-    setIsModalOpen(true);
-  };
-
   // Kontak Operations
   const handleOpenKontakAdd = () => {
     setEditingId(null);
@@ -442,18 +385,10 @@ export default function ConfigManagement() {
     try {
       let url = "/api/config";
       let method = "POST";
-      let payload: any = { section: modalType === "visimisi" ? "visi_misi_tujuan" : modalType };
-
-
+      let payload: any = { section: modalType };
 
       let dataToSubmit: any = {};
-      if (modalType === "visimisi") {
-        dataToSubmit = {
-          kategori: visiMisiForm.tipe,
-          konten: visiMisiForm.konten,
-          urutan: visiMisiForm.urutan,
-        };
-      } else if (modalType === "kontak") {
+      if (modalType === "kontak") {
         dataToSubmit = { ...kontakForm };
       }
 
@@ -518,20 +453,7 @@ export default function ConfigManagement() {
 
 
 
-  const filteredVisiMisi = visiMisiList.filter(item => {
-    const q = visimisiSearchQuery.toLowerCase();
-    return (
-      item.tipe.toLowerCase().includes(q) ||
-      item.konten.toLowerCase().includes(q) ||
-      String(item.urutan).includes(q)
-    );
-  });
-  const totalVisiMisiEntries = filteredVisiMisi.length;
-  const totalVisiMisiPages = Math.ceil(totalVisiMisiEntries / visimisiPageSize);
-  const paginatedVisiMisi = filteredVisiMisi.slice(
-    (visimisiPage - 1) * visimisiPageSize,
-    visimisiPage * visimisiPageSize
-  );
+
 
   if (isLoading) {
     return <div className="text-center py-12 text-gray-400 font-medium animate-pulse">Loading Konfigurasi Website...</div>;
@@ -556,16 +478,7 @@ export default function ConfigManagement() {
         >
           Prodi Info & Logo
         </button>
-        <button
-          onClick={() => setActiveTab("visimisi")}
-          className={`px-4 py-2.5 text-sm font-medium rounded-t-xl transition-colors cursor-pointer ${
-            activeTab === "visimisi"
-              ? "bg-primary-50 text-primary-700 border-b-2 border-primary-600"
-              : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-          }`}
-        >
-          Visi, Misi & Tujuan
-        </button>
+
         <button
           onClick={() => setActiveTab("sambutan")}
           className={`px-4 py-2.5 text-sm font-medium rounded-t-xl transition-colors cursor-pointer ${
@@ -768,203 +681,7 @@ export default function ConfigManagement() {
 
 
 
-      {/* VISI MISI TAB */}
-      {activeTab === "visimisi" && (() => {
-        const visiItems = visiMisiList.filter((item) => item.tipe === "visi").sort((a, b) => a.urutan - b.urutan);
-        const misiItems = visiMisiList.filter((item) => item.tipe === "misi").sort((a, b) => a.urutan - b.urutan);
-        const tujuanItems = visiMisiList.filter((item) => item.tipe === "tujuan").sort((a, b) => a.urutan - b.urutan);
 
-        return (
-          <div className="space-y-8">
-            <div>
-              <h3 className="font-bold text-primary-950 text-lg">Visi, Misi &amp; Tujuan Prodi</h3>
-              <p className="text-gray-500 text-xs mt-1">Kelola poin visi, misi, dan tujuan program studi yang tampil pada halaman profil.</p>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-              {/* TABEL VISI */}
-              <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex justify-between items-center border-b border-gray-50 pb-3">
-                  <div>
-                    <h4 className="font-bold text-primary-950 text-base">Visi Program Studi</h4>
-                    <p className="text-gray-500 text-xs mt-0.5">Visi utama program studi.</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenVisiMisiAddType("visi")}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm"
-                  >
-                    <PlusIcon className="w-3.5 h-3.5" /> Tambah Visi
-                  </button>
-                </div>
-
-                <div className="overflow-hidden border border-gray-100 rounded-xl">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-primary-50/30">
-                        <th className="text-left px-4 py-2.5 font-bold text-primary-900 w-16">No</th>
-                        <th className="text-left px-4 py-2.5 font-bold text-primary-900">Konten / Uraian</th>
-                        <th className="text-right px-4 py-2.5 font-bold text-primary-900 w-24">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visiItems.map((item, idx) => (
-                        <tr key={item.id} className="border-t border-gray-50 hover:bg-gray-50/20">
-                          <td className="px-4 py-3 text-gray-500 font-medium">{idx + 1}</td>
-                          <td className="px-4 py-3 text-gray-700 leading-relaxed text-xs sm:text-sm">{item.konten}</td>
-                          <td className="px-4 py-3 text-right space-x-1">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenVisiMisiEdit(item)}
-                              className="inline-flex items-center justify-center p-1.5 rounded-lg text-primary-600 hover:bg-primary-50 cursor-pointer"
-                            >
-                              <EditIcon className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenDelete(item.id, "visi_misi_tujuan")}
-                              className="inline-flex items-center justify-center p-1.5 rounded-lg text-red-600 hover:bg-red-50 cursor-pointer"
-                            >
-                              <TrashIcon className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {visiItems.length === 0 && (
-                        <tr>
-                          <td colSpan={3} className="px-4 py-6 text-center text-gray-400 text-xs">
-                            Belum ada data visi.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* TABEL MISI */}
-              <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex justify-between items-center border-b border-gray-50 pb-3">
-                  <div>
-                    <h4 className="font-bold text-primary-950 text-base">Misi Program Studi</h4>
-                    <p className="text-gray-500 text-xs mt-0.5">Daftar misi program studi.</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenVisiMisiAddType("misi")}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm"
-                  >
-                    <PlusIcon className="w-3.5 h-3.5" /> Tambah Misi
-                  </button>
-                </div>
-
-                <div className="overflow-hidden border border-gray-100 rounded-xl">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-primary-50/30">
-                        <th className="text-left px-4 py-2.5 font-bold text-primary-900 w-16">No</th>
-                        <th className="text-left px-4 py-2.5 font-bold text-primary-900">Konten / Uraian</th>
-                        <th className="text-right px-4 py-2.5 font-bold text-primary-900 w-24">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {misiItems.map((item, idx) => (
-                        <tr key={item.id} className="border-t border-gray-50 hover:bg-gray-50/20">
-                          <td className="px-4 py-3 text-gray-500 font-medium">{idx + 1}</td>
-                          <td className="px-4 py-3 text-gray-700 leading-relaxed text-xs sm:text-sm">{item.konten}</td>
-                          <td className="px-4 py-3 text-right space-x-1">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenVisiMisiEdit(item)}
-                              className="inline-flex items-center justify-center p-1.5 rounded-lg text-primary-600 hover:bg-primary-50 cursor-pointer"
-                            >
-                              <EditIcon className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenDelete(item.id, "visi_misi_tujuan")}
-                              className="inline-flex items-center justify-center p-1.5 rounded-lg text-red-600 hover:bg-red-50 cursor-pointer"
-                            >
-                              <TrashIcon className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {misiItems.length === 0 && (
-                        <tr>
-                          <td colSpan={3} className="px-4 py-6 text-center text-gray-400 text-xs">
-                            Belum ada data misi.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* TABEL TUJUAN */}
-              <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex justify-between items-center border-b border-gray-50 pb-3">
-                  <div>
-                    <h4 className="font-bold text-primary-950 text-base">Tujuan Program Studi</h4>
-                    <p className="text-gray-500 text-xs mt-0.5">Daftar tujuan program studi.</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenVisiMisiAddType("tujuan")}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm"
-                  >
-                    <PlusIcon className="w-3.5 h-3.5" /> Tambah Tujuan
-                  </button>
-                </div>
-
-                <div className="overflow-hidden border border-gray-100 rounded-xl">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-primary-50/30">
-                        <th className="text-left px-4 py-2.5 font-bold text-primary-900 w-16">No</th>
-                        <th className="text-left px-4 py-2.5 font-bold text-primary-900">Konten / Uraian</th>
-                        <th className="text-right px-4 py-2.5 font-bold text-primary-900 w-24">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tujuanItems.map((item, idx) => (
-                        <tr key={item.id} className="border-t border-gray-50 hover:bg-gray-50/20">
-                          <td className="px-4 py-3 text-gray-500 font-medium">{idx + 1}</td>
-                          <td className="px-4 py-3 text-gray-700 leading-relaxed text-xs sm:text-sm">{item.konten}</td>
-                          <td className="px-4 py-3 text-right space-x-1">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenVisiMisiEdit(item)}
-                              className="inline-flex items-center justify-center p-1.5 rounded-lg text-primary-600 hover:bg-primary-50 cursor-pointer"
-                            >
-                              <EditIcon className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenDelete(item.id, "visi_misi_tujuan")}
-                              className="inline-flex items-center justify-center p-1.5 rounded-lg text-red-600 hover:bg-red-50 cursor-pointer"
-                            >
-                              <TrashIcon className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {tujuanItems.length === 0 && (
-                        <tr>
-                          <td colSpan={3} className="px-4 py-6 text-center text-gray-400 text-xs">
-                            Belum ada data tujuan.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* SAMBUTAN TAB */}
       {activeTab === "sambutan" && (
@@ -1089,48 +806,9 @@ export default function ConfigManagement() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={
-          modalType === "visimisi"
-            ? editingId
-              ? `Edit ${visiMisiForm.tipe === "visi" ? "Visi" : visiMisiForm.tipe === "misi" ? "Misi" : "Tujuan"}`
-              : `Tambah ${visiMisiForm.tipe === "visi" ? "Visi" : visiMisiForm.tipe === "misi" ? "Misi" : "Tujuan"}`
-            : ""
-        }
+        title=""
       >
-
-        {modalType === "visimisi" && (
-          <form onSubmit={handleModalSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Uraian / Teks</label>
-              <textarea
-                rows={4}
-                required
-                value={visiMisiForm.konten}
-                onChange={(e) => setVisiMisiForm({ ...visiMisiForm, konten: e.target.value })}
-                className={inputCls + " resize-none"}
-                placeholder={`Masukkan konten ${visiMisiForm.tipe}...`}
-              />
-            </div>
-
-            <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 disabled:opacity-50"
-                disabled={isSubmitting}
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-              >
-                {isSubmitting ? "Menyimpan..." : "Simpan"}
-              </button>
-            </div>
-          </form>
-        )}
+        {null}
       </Modal>
 
       <ConfirmDialog

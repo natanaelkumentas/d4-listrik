@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { HiBolt, HiBeaker, HiHandRaised, HiGlobeAlt, HiLightBulb, HiAcademicCap, HiShieldCheck, HiChevronLeft, HiChevronRight } from "react-icons/hi2";
+import { HiBolt, HiChevronLeft, HiChevronRight } from "react-icons/hi2";
 
 interface VisiMisiItem {
   id: string;
@@ -14,26 +14,12 @@ interface TujuanSectionProps {
   items: VisiMisiItem[];
 }
 
-const tujuanIcons = [
-  <HiBolt key="bolt" className="text-xl" />,
-  <HiBeaker key="beaker" className="text-xl" />,
-  <HiHandRaised key="hand" className="text-xl" />,
-  <HiGlobeAlt key="globe" className="text-xl" />,
-  <HiLightBulb key="lightbulb" className="text-xl" />,
-  <HiAcademicCap key="academic" className="text-xl" />,
-  <HiShieldCheck key="shield" className="text-xl" />,
-];
-
 const tujuanGradients = [
   "from-accent-400 to-accent-600",
   "from-accent-400 to-accent-500",
   "from-accent-500 to-accent-600",
   "from-accent-400 to-accent-600",
 ];
-
-const getTujuanIcon = (index: number) => {
-  return tujuanIcons[index % tujuanIcons.length];
-};
 
 const parseContent = (konten: string, index: number, defaultTitlePrefix: string) => {
   const parts = konten.split(":");
@@ -147,8 +133,8 @@ export default function TujuanSection({ items }: TujuanSectionProps) {
                     <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${gradient}`} />
 
                     <div>
-                      <div className={`text-2xl mb-4 text-white group-hover:scale-110 transition-transform duration-300 w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-md`}>
-                        {getTujuanIcon(index)}
+                      <div className={`text-xl font-bold mb-4 text-white group-hover:scale-110 transition-transform duration-300 w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-md`}>
+                        {index + 1}
                       </div>
                       <h3 className="font-bold text-white text-base mb-2">{title}</h3>
                       <p className="text-sm text-primary-200/70 leading-relaxed">{desc}</p>
