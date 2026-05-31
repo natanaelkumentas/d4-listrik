@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     if (shouldFetch("kontak")) {
       const { data } = await supabase
         .from("kontak")
-        .select("id, tipe, label, url_atau_nomor, urutan")
+        .select("id, nama, nilai, link, icon, urutan")
         .order("urutan", { ascending: true });
       result.kontak = data || [];
     }
