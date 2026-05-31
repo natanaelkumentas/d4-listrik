@@ -7,6 +7,8 @@ import MisiSection from "@/components/tentang/MisiSection";
 import TujuanSection from "@/components/tentang/TujuanSection";
 import { cachedFetch } from "@/lib/fetchCache";
 import { HiAcademicCap, HiUserGroup, HiWrenchScrewdriver, HiBuildingLibrary } from "react-icons/hi2";
+import LazySection from "@/components/universal/LazySection";
+
 
 interface ProdiInfoData {
   nama: string;
@@ -152,13 +154,19 @@ export default function TentangPage() {
       </section>
 
       {/* ===== Visi Section (Dark Blue) ===== */}
-      <VisiSection items={visi} />
+      <LazySection placeholderHeight="400px">
+        <VisiSection items={visi} />
+      </LazySection>
 
       {/* ===== Misi Section (White) ===== */}
-      <MisiSection items={misi} />
+      <LazySection placeholderHeight="450px">
+        <MisiSection items={misi} />
+      </LazySection>
 
       {/* ===== Tujuan Section (Dark Blue) ===== */}
-      <TujuanSection items={tujuan} />
+      <LazySection placeholderHeight="500px">
+        <TujuanSection items={tujuan} />
+      </LazySection>
     </>
   );
 }
