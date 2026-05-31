@@ -66,16 +66,14 @@ export default function Footer() {
 
   if (isDashboard) {
     return (
-      <footer className="bg-primary-950 text-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-          <p className="text-center text-primary-400 text-xs">
-            {footer?.copyright ? (
-              `© ${new Date().getFullYear()} ${footer.copyright.replace(/^(©\s*(\d{4})?\s*|(\d{4})\s*)/i, "").trim()}`
-            ) : (
-              `© ${new Date().getFullYear()}`
-            )}
-          </p>
-        </div>
+      <footer className="fixed bottom-0 left-0 right-0 z-40 bg-primary-950/95 backdrop-blur-sm border-t border-primary-900 text-white h-12 flex items-center justify-center shadow-lg">
+        <p className="text-center text-primary-400 text-xs">
+          {footer?.copyright ? (
+            `© ${new Date().getFullYear()} ${footer.copyright.replace(/^(©\s*(\d{4})?\s*|(\d{4})\s*)/i, "").trim()}`
+          ) : (
+            `© ${new Date().getFullYear()}`
+          )}
+        </p>
       </footer>
     );
   }
