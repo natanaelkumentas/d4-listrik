@@ -70,6 +70,11 @@ export default function AdminKaryaPage() {
   const [catatan, setCatatan] = useState("");
   const [activeSection, setActiveSection] = useState<"pending" | "all">("pending");
 
+  // Filters state
+  const [filterDosen, setFilterDosen] = useState("");
+  const [filterJenis, setFilterJenis] = useState("");
+  const [filterTahun, setFilterTahun] = useState("");
+
   // Search & Pagination states
   const [pendingSearchQuery, setPendingSearchQuery] = useState("");
   const [pendingPage, setPendingPage] = useState(1);
@@ -82,6 +87,14 @@ export default function AdminKaryaPage() {
   const [allSearchQuery, setAllSearchQuery] = useState("");
   const [allPage, setAllPage] = useState(1);
   const [allPageSize, setAllPageSize] = useState(10);
+
+  // Compute unique years for filtering
+  const uniqueYears = Array.from(
+    new Set([
+      ...pendingList.map(k => k.tahun),
+      ...allKarya.map(k => k.tahun)
+    ])
+  ).sort((a, b) => b - a);
 
   // CRUD modal state
   const [karyaModalOpen, setKaryaModalOpen] = useState(false);
@@ -404,6 +417,9 @@ export default function AdminKaryaPage() {
 
   const pendingOnly = pendingList.filter(k => k.status === "pending");
   const filteredPending = pendingOnly.filter(k => {
+    if (filterDosen && k.dosen_id !== filterDosen) return false;
+    if (filterJenis && k.jenis !== filterJenis) return false;
+    if (filterTahun && String(k.tahun) !== filterTahun) return false;
     const q = pendingSearchQuery.toLowerCase();
     return (
       k.judul.toLowerCase().includes(q) ||
@@ -421,6 +437,9 @@ export default function AdminKaryaPage() {
 
   const reviewedList = pendingList.filter(k => k.status !== "pending");
   const filteredReviewed = reviewedList.filter(k => {
+    if (filterDosen && k.dosen_id !== filterDosen) return false;
+    if (filterJenis && k.jenis !== filterJenis) return false;
+    if (filterTahun && String(k.tahun) !== filterTahun) return false;
     const q = reviewedSearchQuery.toLowerCase();
     return (
       k.judul.toLowerCase().includes(q) ||
@@ -438,6 +457,9 @@ export default function AdminKaryaPage() {
   );
 
   const filteredAllKarya = allKarya.filter(k => {
+    if (filterDosen && k.dosen_id !== filterDosen) return false;
+    if (filterJenis && k.jenis !== filterJenis) return false;
+    if (filterTahun && String(k.tahun) !== filterTahun) return false;
     const q = allSearchQuery.toLowerCase();
     const dosenNama = dosenOptions.find(d => d.id === k.dosen_id)?.nama || k.dosen_id;
     return (
@@ -471,6 +493,77 @@ export default function AdminKaryaPage() {
             {tab.label}
           </button>
         ))}
+      </div>
+
+      {/* Filters Container */}
+      <div className="flex flex-wrap items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-2xl mb-6">
+        <div className="flex flex-wrap items-center gap-3 w-full">
+          <span className="text-xs font-semibold text-gray-500 block">Filter:</span>
+          
+          <select
+            value={filterDosen}
+            onChange={(e) => {
+              setFilterDosen(e.target.value);
+              setPendingPage(1);
+              setReviewedPage(1);
+              setAllPage(1);
+            }}
+            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/25 text-gray-800 font-medium cursor-pointer"
+          >
+            <option value="">Semua Dosen</option>
+            {dosenOptions.map(d => (
+              <option key={d.id} value={d.id}>{d.nama}</option>
+            ))}
+          </select>
+
+          <select
+            value={filterJenis}
+            onChange={(e) => {
+              setFilterJenis(e.target.value);
+              setPendingPage(1);
+              setReviewedPage(1);
+              setAllPage(1);
+            }}
+            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/25 text-gray-800 font-medium cursor-pointer"
+          >
+            <option value="">Semua Jenis</option>
+            {Object.entries(jenisLabels).map(([val, label]) => (
+              <option key={val} value={val}>{label}</option>
+            ))}
+          </select>
+
+          <select
+            value={filterTahun}
+            onChange={(e) => {
+              setFilterTahun(e.target.value);
+              setPendingPage(1);
+              setReviewedPage(1);
+              setAllPage(1);
+            }}
+            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/25 text-gray-800 font-medium cursor-pointer"
+          >
+            <option value="">Semua Tahun</option>
+            {uniqueYears.map(yr => (
+              <option key={yr} value={yr}>{yr}</option>
+            ))}
+          </select>
+
+          {(filterDosen || filterJenis || filterTahun) && (
+            <button
+              onClick={() => {
+                setFilterDosen("");
+                setFilterJenis("");
+                setFilterTahun("");
+                setPendingPage(1);
+                setReviewedPage(1);
+                setAllPage(1);
+              }}
+              className="px-3 py-2 text-xs font-bold bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-xl transition-all cursor-pointer shadow-sm"
+            >
+              Reset
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ========== PENDING TAB ========== */}

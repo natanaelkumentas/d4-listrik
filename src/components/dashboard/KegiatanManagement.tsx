@@ -69,6 +69,10 @@ export default function KegiatanManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  // Filters state
+  const [filterKategori, setFilterKategori] = useState("");
+  const [filterBulan, setFilterBulan] = useState("");
+  const [filterTahun, setFilterTahun] = useState("");
 
   // Search & Pagination states
   const [pendingSearchQuery, setPendingSearchQuery] = useState("");
@@ -82,6 +86,37 @@ export default function KegiatanManagement() {
   const [allSearchQuery, setAllSearchQuery] = useState("");
   const [allPage, setAllPage] = useState(1);
   const [allPageSize, setAllPageSize] = useState(10);
+
+  // Compute unique categories
+  const uniqueCategories = Array.from(
+    new Set([
+      ...approvedItems.map(k => k.kategori),
+      ...pendingItems.map(k => k.kategori)
+    ].filter(Boolean))
+  ).sort();
+
+  // Compute unique years
+  const uniqueYears = Array.from(
+    new Set([
+      ...approvedItems.map(k => k.tanggal ? k.tanggal.split("-")[0] : null),
+      ...pendingItems.map(k => k.tanggal ? k.tanggal.split("-")[0] : null)
+    ])
+  ).filter((yr): yr is string => typeof yr === "string" && yr !== "").sort((a, b) => Number(b) - Number(a));
+
+  const months = [
+    { value: "01", label: "Januari" },
+    { value: "02", label: "Februari" },
+    { value: "03", label: "Maret" },
+    { value: "04", label: "April" },
+    { value: "05", label: "Mei" },
+    { value: "06", label: "Juni" },
+    { value: "07", label: "Juli" },
+    { value: "08", label: "Agustus" },
+    { value: "09", label: "September" },
+    { value: "10", label: "Oktober" },
+    { value: "11", label: "November" },
+    { value: "12", label: "Desember" }
+  ];
 
   // Modal editor states
   const [isOpen, setIsOpen] = useState(false);
@@ -316,6 +351,9 @@ export default function KegiatanManagement() {
   // Filter calculations (matches Karya list filtering)
   const pendingOnly = pendingItems.filter((k) => k.status === "pending");
   const filteredPending = pendingOnly.filter((k) => {
+    if (filterKategori && k.kategori !== filterKategori) return false;
+    if (filterTahun && k.tanggal && k.tanggal.split("-")[0] !== filterTahun) return false;
+    if (filterBulan && k.tanggal && k.tanggal.split("-")[1] !== filterBulan) return false;
     const q = pendingSearchQuery.toLowerCase();
     return (
       k.nama.toLowerCase().includes(q) ||
@@ -332,6 +370,9 @@ export default function KegiatanManagement() {
 
   const reviewedOnly = pendingItems.filter((k) => k.status !== "pending");
   const filteredReviewed = reviewedOnly.filter((k) => {
+    if (filterKategori && k.kategori !== filterKategori) return false;
+    if (filterTahun && k.tanggal && k.tanggal.split("-")[0] !== filterTahun) return false;
+    if (filterBulan && k.tanggal && k.tanggal.split("-")[1] !== filterBulan) return false;
     const q = reviewedSearchQuery.toLowerCase();
     return (
       k.nama.toLowerCase().includes(q) ||
@@ -348,6 +389,9 @@ export default function KegiatanManagement() {
   );
 
   const filteredAllApproved = approvedItems.filter((k) => {
+    if (filterKategori && k.kategori !== filterKategori) return false;
+    if (filterTahun && k.tanggal && k.tanggal.split("-")[0] !== filterTahun) return false;
+    if (filterBulan && k.tanggal && k.tanggal.split("-")[1] !== filterBulan) return false;
     const q = allSearchQuery.toLowerCase();
     return (
       k.nama.toLowerCase().includes(q) ||
@@ -429,6 +473,77 @@ export default function KegiatanManagement() {
           ))}
         </div>
       ) : null}
+
+      {/* Filters Container */}
+      <div className="flex flex-wrap items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-2xl mb-6">
+        <div className="flex flex-wrap items-center gap-3 w-full">
+          <span className="text-xs font-semibold text-gray-500 block">Filter:</span>
+          
+          <select
+            value={filterKategori}
+            onChange={(e) => {
+              setFilterKategori(e.target.value);
+              setPendingPage(1);
+              setReviewedPage(1);
+              setAllPage(1);
+            }}
+            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/25 text-gray-800 font-medium cursor-pointer"
+          >
+            <option value="">Semua Kategori</option>
+            {uniqueCategories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+
+          <select
+            value={filterBulan}
+            onChange={(e) => {
+              setFilterBulan(e.target.value);
+              setPendingPage(1);
+              setReviewedPage(1);
+              setAllPage(1);
+            }}
+            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/25 text-gray-800 font-medium cursor-pointer"
+          >
+            <option value="">Semua Bulan</option>
+            {months.map(m => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+
+          <select
+            value={filterTahun}
+            onChange={(e) => {
+              setFilterTahun(e.target.value);
+              setPendingPage(1);
+              setReviewedPage(1);
+              setAllPage(1);
+            }}
+            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/25 text-gray-800 font-medium cursor-pointer"
+          >
+            <option value="">Semua Tahun</option>
+            {uniqueYears.map(yr => (
+              <option key={yr} value={yr}>{yr}</option>
+            ))}
+          </select>
+
+          {(filterKategori || filterBulan || filterTahun) && (
+            <button
+              onClick={() => {
+                setFilterKategori("");
+                setFilterBulan("");
+                setFilterTahun("");
+                setPendingPage(1);
+                setReviewedPage(1);
+                setAllPage(1);
+              }}
+              className="px-3 py-2 text-xs font-bold bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-xl transition-all cursor-pointer shadow-sm"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Admin Pending View OR Dosen/Pegawai complete status dashboard (replaces separate tab structures) */}
       {(activeSection === "pending" || !isAdmin) && (
