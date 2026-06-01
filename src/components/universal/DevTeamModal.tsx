@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { HiOutlineXMark, HiOutlineCodeBracket } from "react-icons/hi2";
 import { devTeam, lecturerInfo } from "@/lib/devTeam";
 
@@ -10,12 +11,79 @@ interface DevTeamModalProps {
   onClose: () => void;
 }
 
+interface AvatarProps {
+  url?: string | null;
+  initials: string;
+  gradient: string;
+  className?: string;
+  sizeClass: string;
+}
+
+function Avatar({ url, initials, gradient, className = "", sizeClass }: AvatarProps) {
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    setError(false);
+  }, [url]);
+
+  if (url && !error) {
+    return (
+      <img
+        src={url}
+        alt={initials}
+        onError={() => setError(true)}
+        className={`${sizeClass} rounded-full object-cover shadow-md group-hover:scale-105 transition-transform duration-200 shrink-0 ${className}`}
+      />
+    );
+  }
+
+  return (
+    <div className={`${sizeClass} rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-black shadow-md group-hover:scale-105 transition-transform duration-200 shrink-0 ${className}`}>
+      {initials}
+    </div>
+  );
+}
+
 export default function DevTeamModal({ isOpen, onClose }: DevTeamModalProps) {
   const [mounted, setMounted] = useState(false);
+  const [developers, setDevelopers] = useState<any[]>(devTeam);
+  const [lecturer, setLecturer] = useState<any>(lecturerInfo);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen || !mounted) return;
+
+    const loadDevelopers = async () => {
+      try {
+        const res = await fetch("/api/developers");
+        if (!res.ok) throw new Error("Gagal mengambil data pengembang");
+        const data = await res.json();
+        
+        if (data && typeof data === "object" && "developers" in data) {
+          if (Array.isArray(data.developers) && data.developers.length > 0) {
+            setDevelopers(data.developers);
+          }
+          if (data.lecturer) {
+            setLecturer(data.lecturer);
+          }
+        } else if (Array.isArray(data) && data.length > 0) {
+          setDevelopers(data);
+        }
+      } catch (err) {
+        console.error("Error loading developers from database, falling back to static list:", err);
+        setDevelopers(devTeam);
+        setLecturer(lecturerInfo);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDevelopers();
+  }, [isOpen, mounted]);
 
   if (!isOpen || !mounted) return null;
 
@@ -55,7 +123,7 @@ export default function DevTeamModal({ isOpen, onClose }: DevTeamModalProps) {
 
           {/* Members Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            {devTeam.map((member, idx) => (
+            {developers.map((member, idx) => (
               <div 
                 key={idx}
                 className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col items-center text-center shadow-sm relative group hover:border-primary-300 transition-colors duration-200"
@@ -65,13 +133,23 @@ export default function DevTeamModal({ isOpen, onClose }: DevTeamModalProps) {
                     href={member.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br ${member.gradient} flex items-center justify-center text-white font-black text-base sm:text-lg shadow-md mb-2.5 sm:mb-3.5 group-hover:scale-105 transition-transform duration-200`}
+                    className="mb-2.5 sm:mb-3.5"
                   >
-                    {member.initials}
+                    <Avatar
+                      url={member.foto_url}
+                      initials={member.initials}
+                      gradient={member.gradient}
+                      sizeClass="w-12 h-12 sm:w-14 sm:h-14 text-base sm:text-lg"
+                    />
                   </a>
                 ) : (
-                  <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br ${member.gradient} flex items-center justify-center text-white font-black text-base sm:text-lg shadow-md mb-2.5 sm:mb-3.5 group-hover:scale-105 transition-transform duration-200`}>
-                    {member.initials}
+                  <div className="mb-2.5 sm:mb-3.5">
+                    <Avatar
+                      url={member.foto_url}
+                      initials={member.initials}
+                      gradient={member.gradient}
+                      sizeClass="w-12 h-12 sm:w-14 sm:h-14 text-base sm:text-lg"
+                    />
                   </div>
                 )}
                 
@@ -107,37 +185,70 @@ export default function DevTeamModal({ isOpen, onClose }: DevTeamModalProps) {
               Dosen Pengajar
             </span>
             <div className="bg-slate-50 border border-slate-200/80 rounded-2xl px-4 py-2 flex items-center gap-3 w-full max-w-xs hover:border-primary-300 transition-all duration-200 group">
-              {lecturerInfo.link ? (
-                <a
-                  href={lecturerInfo.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-950 to-primary-900 text-white font-black text-[10px] flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-200 shrink-0"
-                >
-                  {lecturerInfo.initials}
-                </a>
+              {lecturer.link ? (
+                lecturer.link.startsWith("/") ? (
+                  <Link
+                    href={lecturer.link}
+                    onClick={onClose}
+                  >
+                    <Avatar
+                      url={lecturer.foto_url}
+                      initials={lecturer.initials}
+                      gradient="from-primary-950 to-primary-900"
+                      sizeClass="w-9 h-9 text-[10px]"
+                    />
+                  </Link>
+                ) : (
+                  <a
+                    href={lecturer.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Avatar
+                      url={lecturer.foto_url}
+                      initials={lecturer.initials}
+                      gradient="from-primary-950 to-primary-900"
+                      sizeClass="w-9 h-9 text-[10px]"
+                    />
+                  </a>
+                )
               ) : (
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-950 to-primary-900 text-white font-black text-[10px] flex items-center justify-center shadow-sm shrink-0">
-                  {lecturerInfo.initials}
+                <div>
+                  <Avatar
+                    url={lecturer.foto_url}
+                    initials={lecturer.initials}
+                    gradient="from-primary-950 to-primary-900"
+                    sizeClass="w-9 h-9 text-[10px]"
+                  />
                 </div>
               )}
               <div className="text-left min-w-0">
-                {lecturerInfo.link ? (
-                  <a
-                    href={lecturerInfo.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-extrabold text-gray-900 hover:text-primary-600 text-xs leading-tight block truncate hover:underline transition-colors"
-                  >
-                    {lecturerInfo.nama}
-                  </a>
+                {lecturer.link ? (
+                  lecturer.link.startsWith("/") ? (
+                    <Link
+                      href={lecturer.link}
+                      onClick={onClose}
+                      className="font-extrabold text-gray-900 hover:text-primary-600 text-xs leading-tight block truncate hover:underline transition-colors"
+                    >
+                      {lecturer.nama}
+                    </Link>
+                  ) : (
+                    <a
+                      href={lecturer.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-extrabold text-gray-900 hover:text-primary-600 text-xs leading-tight block truncate hover:underline transition-colors"
+                    >
+                      {lecturer.nama}
+                    </a>
+                  )
                 ) : (
                   <h4 className="font-extrabold text-gray-900 text-xs leading-tight truncate">
-                    {lecturerInfo.nama}
+                    {lecturer.nama}
                   </h4>
                 )}
                 <p className="text-[10px] text-gray-600 truncate mt-0.5">
-                  {lecturerInfo.role}
+                  {lecturer.role}
                 </p>
               </div>
             </div>

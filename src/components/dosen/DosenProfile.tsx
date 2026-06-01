@@ -43,15 +43,39 @@ export default function DosenProfile({ dosen, index }: { dosen: Dosen; index: nu
   }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && document.referrer) {
-      const referrer = document.referrer;
-      if (referrer.includes("/dashboard")) {
-        setBackLabel("Kembali ke Dashboard");
-      } else if (referrer.includes("/galeri")) {
-        setBackLabel("Kembali ke Galeri");
-      } else if (referrer.includes("/fasilitas")) {
-        setBackLabel("Kembali ke Fasilitas");
+    try {
+      const prevPath = sessionStorage.getItem("prev_path");
+      if (prevPath) {
+        if (prevPath.includes("/dashboard")) {
+          setBackLabel("Kembali ke Dashboard");
+          return;
+        } else if (prevPath.includes("/galeri")) {
+          setBackLabel("Kembali ke Galeri");
+          return;
+        } else if (prevPath.includes("/fasilitas")) {
+          setBackLabel("Kembali ke Fasilitas");
+          return;
+        } else if (prevPath.includes("/tentang")) {
+          setBackLabel("Kembali ke Tentang");
+          return;
+        } else if (prevPath.includes("/kurikulum")) {
+          setBackLabel("Kembali ke Kurikulum");
+          return;
+        }
       }
+
+      if (typeof window !== "undefined" && document.referrer) {
+        const referrer = document.referrer;
+        if (referrer.includes("/dashboard")) {
+          setBackLabel("Kembali ke Dashboard");
+        } else if (referrer.includes("/galeri")) {
+          setBackLabel("Kembali ke Galeri");
+        } else if (referrer.includes("/fasilitas")) {
+          setBackLabel("Kembali ke Fasilitas");
+        }
+      }
+    } catch (e) {
+      console.warn("sessionStorage is not available:", e);
     }
   }, []);
 
@@ -128,7 +152,7 @@ export default function DosenProfile({ dosen, index }: { dosen: Dosen; index: nu
                     <p className="text-xs text-gray-400">Email</p>
                     <p className="font-medium text-gray-700">
                       {dosen.email || (
-                        <span className="text-gray-400 italic">Dirahasiakan / Tidak ada</span>
+                        <span className="text-gray-400 italic">Tidak ada</span>
                       )}
                     </p>
                   </div>
@@ -139,7 +163,7 @@ export default function DosenProfile({ dosen, index }: { dosen: Dosen; index: nu
                     <p className="text-xs text-gray-400">Telepon</p>
                     <p className="font-medium text-gray-700">
                       {dosen.telepon || (
-                        <span className="text-gray-400 italic">Dirahasiakan / Tidak ada</span>
+                        <span className="text-gray-400 italic">Tidak ada</span>
                       )}
                     </p>
                   </div>

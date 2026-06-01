@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useRef } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { Dosen } from "@/types/dosen";
 import { GaleriItem } from "@/types/galeri";
 import { Pegawai } from "@/types/pegawai";
@@ -82,6 +83,20 @@ function mapKarya(k: any) {
 }
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    try {
+      const currentPrev = sessionStorage.getItem("current_path");
+      if (currentPrev && currentPrev !== pathname) {
+        sessionStorage.setItem("prev_path", currentPrev);
+      }
+      sessionStorage.setItem("current_path", pathname);
+    } catch (e) {
+      console.warn("sessionStorage is not available:", e);
+    }
+  }, [pathname]);
+
   const [dosenList, setDosenList] = useState<Dosen[]>([]);
   const [pegawaiList, setPegawaiList] = useState<Pegawai[]>([]);
   const [isDosenLoaded, setIsDosenLoaded] = useState(false);
