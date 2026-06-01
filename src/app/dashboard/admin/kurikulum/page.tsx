@@ -66,6 +66,13 @@ export default function AdminKurikulumPage() {
   const [cplPage, setcplPage] = useState(1);
   const [cplPageSize, setCplPageSize] = useState(10);
 
+  // Filters
+  const [mkFilterSemester, setMkFilterSemester] = useState<string>("");
+  const [mkFilterSks, setMkFilterSks] = useState<string>("");
+  const [mkFilterJenis, setMkFilterJenis] = useState<string>("");
+
+  const [cplFilterKategori, setCplFilterKategori] = useState<string>("");
+
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMsg, setConfirmMsg] = useState("");
@@ -452,15 +459,28 @@ export default function AdminKurikulumPage() {
     });
   };
 
+  // Unique SKS and Jenis options for Mata Kuliah
+  const uniqueMkSks = Array.from(
+    new Set(mataKuliahList.map(mk => mk.sks).filter(s => s !== undefined))
+  ).sort((a, b) => a - b) as number[];
+
+  const uniqueMkJenis = Array.from(
+    new Set(mataKuliahList.map(mk => mk.jenis).filter(Boolean))
+  ).sort() as string[];
+
   const filteredMataKuliah = mataKuliahList.filter((mk) => {
     const q = mkSearchQuery.toLowerCase();
-    return (
-      mk.kode.toLowerCase().includes(q) ||
+    const matchesSearch = mk.kode.toLowerCase().includes(q) ||
       mk.nama.toLowerCase().includes(q) ||
       (mk.jenis || "").toLowerCase().includes(q) ||
       String(mk.sks).includes(q) ||
-      String(mk.semester).includes(q)
-    );
+      String(mk.semester).includes(q);
+
+    const matchesSemester = mkFilterSemester === "" || String(mk.semester) === mkFilterSemester;
+    const matchesSks = mkFilterSks === "" || String(mk.sks) === mkFilterSks;
+    const matchesJenis = mkFilterJenis === "" || (mk.jenis || "").toUpperCase() === mkFilterJenis.toUpperCase();
+
+    return matchesSearch && matchesSemester && matchesSks && matchesJenis;
   });
   const totalMkEntries = filteredMataKuliah.length;
   const totalMkPages = Math.ceil(totalMkEntries / mkPageSize);
@@ -471,7 +491,11 @@ export default function AdminKurikulumPage() {
 
   const filteredCpl = cplList.filter((cpl) => {
     const q = cplSearchQuery.toLowerCase();
-    return cpl.kode.toLowerCase().includes(q) || cpl.deskripsi.toLowerCase().includes(q);
+    const matchesSearch = cpl.kode.toLowerCase().includes(q) || cpl.deskripsi.toLowerCase().includes(q);
+
+    const matchesKategori = cplFilterKategori === "" || cpl.kategori === cplFilterKategori;
+
+    return matchesSearch && matchesKategori;
   });
   const totalCplEntries = filteredCpl.length;
   const totalCplPages = Math.ceil(totalCplEntries / cplPageSize);
@@ -499,7 +523,7 @@ export default function AdminKurikulumPage() {
 
       <div className="flex gap-1 mb-6 border-b border-gray-100">
         {tabs.map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+          <button key={tab.key} onClick={() => { setActiveTab(tab.key); setMkSearchQuery(""); setCplSearchQuery(""); setMkFilterSemester(""); setMkFilterSks(""); setMkFilterJenis(""); setCplFilterKategori(""); }}
             className={`px-4 py-2.5 text-sm font-medium rounded-t-xl transition-colors ${activeTab === tab.key ? "bg-primary-50 text-primary-700 border-b-2 border-primary-600" : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
             {tab.label}
           </button>
@@ -781,6 +805,65 @@ export default function AdminKurikulumPage() {
               <HiOutlinePlus className="w-5 h-5" /> Tambah Mata Kuliah
             </button>
           </div>
+
+          {/* Mata Kuliah Filters */}
+          <div className="flex flex-wrap items-center gap-4 p-4 bg-gray-50/50 border border-gray-100 rounded-2xl mb-4">
+            <div>
+              <span className="text-xs font-semibold text-gray-500 block mb-1">Semester</span>
+              <select
+                value={mkFilterSemester}
+                onChange={(e) => { setMkFilterSemester(e.target.value); setMkPage(1); }}
+                className="w-full sm:w-32 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/25 text-gray-800 font-medium cursor-pointer"
+              >
+                <option value="">Semua</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
+                  <option key={s} value={String(s)}>Semester {s}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <span className="text-xs font-semibold text-gray-500 block mb-1">SKS</span>
+              <select
+                value={mkFilterSks}
+                onChange={(e) => { setMkFilterSks(e.target.value); setMkPage(1); }}
+                className="w-full sm:w-32 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/25 text-gray-800 font-medium cursor-pointer"
+              >
+                <option value="">Semua</option>
+                {uniqueMkSks.map(s => (
+                  <option key={s} value={String(s)}>{s} SKS</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <span className="text-xs font-semibold text-gray-500 block mb-1">Jenis</span>
+              <select
+                value={mkFilterJenis}
+                onChange={(e) => { setMkFilterJenis(e.target.value); setMkPage(1); }}
+                className="w-full sm:w-48 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/25 text-gray-800 font-medium cursor-pointer"
+              >
+                <option value="">Semua</option>
+                {uniqueMkJenis.map(j => (
+                  <option key={j} value={j}>{j}</option>
+                ))}
+              </select>
+            </div>
+
+            {(mkFilterSemester || mkFilterSks || mkFilterJenis) && (
+              <button
+                onClick={() => {
+                  setMkFilterSemester("");
+                  setMkFilterSks("");
+                  setMkFilterJenis("");
+                  setMkPage(1);
+                }}
+                className="sm:mt-5 px-4 py-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-650 rounded-xl transition-all cursor-pointer shadow-sm"
+              >
+                Reset Filter
+              </button>
+            )}
+          </div>
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-gray-600">
@@ -885,6 +968,35 @@ export default function AdminKurikulumPage() {
                 <HiOutlinePlus className="w-5 h-5" /> Tambah CPL
               </button>
             </div>
+          </div>
+
+          {/* CPL Filters */}
+          <div className="flex flex-wrap items-center gap-4 p-4 bg-gray-50/50 border border-gray-100 rounded-2xl mb-4">
+            <div>
+              <span className="text-xs font-semibold text-gray-500 block mb-1">Kategori CPL</span>
+              <select
+                value={cplFilterKategori}
+                onChange={(e) => { setCplFilterKategori(e.target.value); setcplPage(1); }}
+                className="w-full sm:w-64 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/25 text-gray-800 font-medium cursor-pointer"
+              >
+                <option value="">Semua Kategori</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.nama}>{cat.nama}</option>
+                ))}
+              </select>
+            </div>
+
+            {cplFilterKategori && (
+              <button
+                onClick={() => {
+                  setCplFilterKategori("");
+                  setcplPage(1);
+                }}
+                className="sm:mt-5 px-4 py-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-650 rounded-xl transition-all cursor-pointer shadow-sm"
+              >
+                Reset Filter
+              </button>
+            )}
           </div>
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto">

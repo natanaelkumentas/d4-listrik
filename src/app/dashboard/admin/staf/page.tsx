@@ -62,6 +62,11 @@ export default function AdminStafPage() {
   const [verifikasiPage, setVerifikasiPage] = useState(1);
   const [verifikasiPageSize, setVerifikasiPageSize] = useState(10);
 
+  // Filters for Dosen
+  const [filterJabatan, setFilterJabatan] = useState("");
+  const [filterBidang, setFilterBidang] = useState("");
+  const [filterHomebase, setFilterHomebase] = useState("");
+
   // Verifikasi Profil States
   const [requests, setRequests] = useState<PendingProfileRequest[]>([]);
   const [isVerifikasiLoading, setIsVerifikasiLoading] = useState(true);
@@ -428,12 +433,34 @@ export default function AdminStafPage() {
     return diffs.filter(Boolean);
   };
 
+  // Unique lists for Dosen filters
+  const uniqueJabatans = Array.from(
+    new Set(dosenList.map(d => d.jabatan).filter(Boolean))
+  ).sort() as string[];
+
+  const uniqueBidangs = Array.from(
+    new Set(dosenList.flatMap(d => d.bidangKeahlian || []).filter(Boolean))
+  ).sort() as string[];
+
+  const uniqueHomebases = Array.from(
+    new Set(dosenList.map(d => d.programStudi).filter(Boolean))
+  ).sort() as string[];
+
   // Search filter datasets
-  const filteredDosen = dosenList.filter(d => 
-    d.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (d.nip && d.nip.includes(searchQuery)) ||
-    (d.email && d.email.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredDosen = dosenList.filter(d => {
+    const matchesSearch = searchQuery === "" ||
+      d.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (d.nip && d.nip.includes(searchQuery)) ||
+      (d.email && d.email.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesJabatan = filterJabatan === "" || d.jabatan === filterJabatan;
+
+    const matchesBidang = filterBidang === "" || (d.bidangKeahlian && d.bidangKeahlian.includes(filterBidang));
+
+    const matchesHomebase = filterHomebase === "" || d.programStudi === filterHomebase;
+
+    return matchesSearch && matchesJabatan && matchesBidang && matchesHomebase;
+  });
   const totalDosenEntries = filteredDosen.length;
   const totalDosenPages = Math.ceil(totalDosenEntries / dosenPageSize);
   const paginatedDosen = filteredDosen.slice(
@@ -483,7 +510,7 @@ export default function AdminStafPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-4">
         <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
           <button
-            onClick={() => { setActiveTab("dosen"); setSearchQuery(""); setDosenPage(1); }}
+            onClick={() => { setActiveTab("dosen"); setSearchQuery(""); setDosenPage(1); setFilterJabatan(""); setFilterBidang(""); setFilterHomebase(""); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
               activeTab === "dosen"
                 ? "bg-white text-primary-700 shadow-sm"
@@ -494,7 +521,7 @@ export default function AdminStafPage() {
             Dosen {isDosenLoaded && `(${dosenList.length})`}
           </button>
           <button
-            onClick={() => { setActiveTab("pegawai"); setSearchQuery(""); setPegawaiPage(1); }}
+            onClick={() => { setActiveTab("pegawai"); setSearchQuery(""); setPegawaiPage(1); setFilterJabatan(""); setFilterBidang(""); setFilterHomebase(""); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
               activeTab === "pegawai"
                 ? "bg-white text-primary-700 shadow-sm"
@@ -505,7 +532,7 @@ export default function AdminStafPage() {
             Pegawai {isPegawaiLoaded && `(${pegawaiList.length})`}
           </button>
           <button
-            onClick={() => { setActiveTab("verifikasi"); setSearchQuery(""); }}
+            onClick={() => { setActiveTab("verifikasi"); setSearchQuery(""); setFilterJabatan(""); setFilterBidang(""); setFilterHomebase(""); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer relative ${
               activeTab === "verifikasi"
                 ? "bg-white text-primary-700 shadow-sm"
@@ -542,6 +569,67 @@ export default function AdminStafPage() {
           </div>
         )}
       </div>
+
+      {/* Advanced Filters for Dosen */}
+      {activeTab === "dosen" && (
+        <div className="flex flex-wrap items-center gap-4 p-4 bg-gray-50/50 border border-gray-100 rounded-2xl">
+          <div className="w-full sm:w-auto">
+            <span className="text-xs font-semibold text-gray-500 block mb-1">Jabatan</span>
+            <select
+              value={filterJabatan}
+              onChange={(e) => { setFilterJabatan(e.target.value); setDosenPage(1); }}
+              className="w-full sm:w-48 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/25 text-gray-800 font-medium cursor-pointer"
+            >
+              <option value="">Semua Jabatan</option>
+              {uniqueJabatans.map((j) => (
+                <option key={j} value={j}>{j}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="w-full sm:w-auto">
+            <span className="text-xs font-semibold text-gray-500 block mb-1">Bidang Keahlian</span>
+            <select
+              value={filterBidang}
+              onChange={(e) => { setFilterBidang(e.target.value); setDosenPage(1); }}
+              className="w-full sm:w-56 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/25 text-gray-800 font-medium cursor-pointer"
+            >
+              <option value="">Semua Bidang Keahlian</option>
+              {uniqueBidangs.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="w-full sm:w-auto">
+            <span className="text-xs font-semibold text-gray-500 block mb-1">Homebase (Program Studi)</span>
+            <select
+              value={filterHomebase}
+              onChange={(e) => { setFilterHomebase(e.target.value); setDosenPage(1); }}
+              className="w-full sm:w-48 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/25 text-gray-800 font-medium cursor-pointer"
+            >
+              <option value="">Semua Homebase</option>
+              {uniqueHomebases.map((h) => (
+                <option key={h} value={h}>{h}</option>
+              ))}
+            </select>
+          </div>
+
+          {(filterJabatan || filterBidang || filterHomebase) && (
+            <button
+              onClick={() => {
+                setFilterJabatan("");
+                setFilterBidang("");
+                setFilterHomebase("");
+                setDosenPage(1);
+              }}
+              className="sm:mt-5 px-4 py-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-650 rounded-xl transition-all cursor-pointer shadow-sm"
+            >
+              Reset Filter
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Tables depending on active tab */}
       {activeTab === "verifikasi" ? (
