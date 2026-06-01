@@ -145,8 +145,10 @@ export default function ComboBox({
     inputRef.current?.focus();
   };
 
+  const widthClass = className.split(" ").some(c => c.startsWith("w-")) ? "" : "w-full";
+
   return (
-    <div ref={containerRef} className={`relative w-full ${className}`}>
+    <div ref={containerRef} className={`relative ${widthClass} ${className}`}>
       <div
         className={`relative w-full ${disabled ? "cursor-not-allowed opacity-60" : "cursor-text"}`}
         onClick={() => {
