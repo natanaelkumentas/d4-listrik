@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/components/universal/Modal";
 import ConfirmDialog from "@/components/universal/ConfirmDialog";
-import { HiOutlinePlus, HiOutlinePencilSquare, HiOutlineTrash, HiOutlineArrowUpTray, HiOutlineDocumentText, HiOutlineMagnifyingGlass, HiOutlineXMark } from "react-icons/hi2";
+import { HiOutlinePlus, HiOutlinePencilSquare, HiOutlineTrash, HiOutlineArrowUpTray, HiOutlineDocumentText, HiOutlineMagnifyingGlass, HiOutlineXMark, HiOutlineTag } from "react-icons/hi2";
 import { cachedFetch, invalidateCache } from "@/lib/fetchCache";
 import ComboBox from "@/components/universal/ComboBox";
 import { useNotification } from "@/context/NotificationContext";
@@ -965,7 +965,7 @@ export default function AdminKurikulumPage() {
             <div className="flex gap-2 w-full lg:w-auto">
               <button onClick={() => { setCatModalOpen(true); setCatName(""); }}
                 className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 bg-white rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm cursor-pointer justify-center w-full sm:w-auto">
-                <HiOutlinePlus className="w-5 h-5 text-gray-400" /> Kategori CPL
+                <HiOutlineTag className="w-5 h-5 text-gray-400" /> Kelola Kategori
               </button>
               <button onClick={() => { setCplEditingKode(null); setCplForm({ kode: "", deskripsi: "", kategori: "" }); setCplModalOpen(true); }}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors shadow-sm cursor-pointer justify-center w-full sm:w-auto">
@@ -1021,7 +1021,16 @@ export default function AdminKurikulumPage() {
             <form onSubmit={handleCplSubmit} className="space-y-4">
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Kode CPL</label><input type="text" required disabled={!!cplEditingKode} value={cplForm.kode || ""} onChange={e => setCplForm({ ...cplForm, kode: e.target.value })} className={cplEditingKode ? disabledInputCls : inputCls} placeholder="CPL-01" /></div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Kategori CPL (opsional)</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-medium text-gray-700">Kategori CPL (opsional)</label>
+                  <button
+                    type="button"
+                    onClick={() => { setCatModalOpen(true); setCatName(""); }}
+                    className="text-xs font-bold text-primary-600 hover:text-primary-700 hover:underline cursor-pointer"
+                  >
+                    Kelola Kategori
+                  </button>
+                </div>
                 <ComboBox
                   options={categories.map(c => ({ id: c.nama, nama: c.nama }))}
                   value={cplForm.kategori || ""}

@@ -44,6 +44,12 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
+    // Cascade update to cpl table
+    await supabase
+      .from("cpl")
+      .update({ kategori: nama.trim() })
+      .eq("kategori", current.nama);
+
     await createLog({
       kategori: "cpl_kategori",
       aksi: "update",
@@ -90,6 +96,12 @@ export async function DELETE(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+
+    // Cascade nullify to cpl table
+    await supabase
+      .from("cpl")
+      .update({ kategori: null })
+      .eq("kategori", current.nama);
 
     await createLog({
       kategori: "cpl_kategori",
