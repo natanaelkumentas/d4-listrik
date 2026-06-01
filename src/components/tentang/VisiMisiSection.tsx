@@ -273,6 +273,7 @@ export default function VisiMisiSection() {
             >
               {tujuan.map((t, index) => {
                 const { title, desc } = parseContent(t.konten, index, "Tujuan");
+                const hasTitle = t.konten.includes(":") && t.konten.split(":")[0].trim().length < 45;
                 const gradient = tujuanGradients[index % tujuanGradients.length];
                 return (
                   <div
@@ -288,7 +289,7 @@ export default function VisiMisiSection() {
                         <div className={`text-2xl mb-4 text-white group-hover:scale-110 transition-transform duration-300 w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-md`}>
                           {getTujuanIcon(index)}
                         </div>
-                        <h3 className="font-bold text-primary-950 text-base mb-2">{title}</h3>
+                        {hasTitle && <h3 className="font-bold text-primary-950 text-base mb-2">{title}</h3>}
                         <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
                       </div>
                     </div>
