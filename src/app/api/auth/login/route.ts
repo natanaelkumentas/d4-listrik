@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     // Fetch profile — use the authenticated client which now has the session
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("role, full_name, nidn")
+      .select("role, full_name, nip")
       .eq("id", data.user.id)
       .single();
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         email: data.user.email,
         role: profile?.role ?? "dosen",
         full_name: profile?.full_name ?? null,
-        nidn: profile?.nidn ?? null,
+        nip: profile?.nip ?? null,
       },
       session: {
         access_token: data.session.access_token,

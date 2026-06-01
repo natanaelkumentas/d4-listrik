@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
+import { createLog, getClientIp } from "@/lib/logging";
 
-// PUT /api/pegawai/[id] — Admin only
+// PUT /api/pegawai/[id] — Admin only (Updates directly)
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const result = await requireRole(["admin"]);
@@ -42,9 +43,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.program_studi !== undefined) updateData.program_studi = body.program_studi;
     if (body.pendidikan_terakhir !== undefined) updateData.pendidikan_terakhir = body.pendidikan_terakhir;
 
+    // Fetch before data for logs
     const { data: currentPegawai } = await adminClient
       .from("pegawai")
-      .select("foto_url")
+      .select("*")
       .eq("id", id)
       .single();
 
@@ -67,6 +69,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
+    // Log update
+    await createLog({
+      kategori: "pegawai",
+      aksi: "update",
+      deskripsi: `Memperbarui pegawai: ${data.nama}`,
+      data_sebelum: currentPegawai,
+      data_sesudah: data,
+      ip_address: getClientIp(request)
+    });
+
     return NextResponse.json(data);
   } catch (err: any) {
     console.error("PUT /api/pegawai/[id] failed:", err);
@@ -84,10 +96,10 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const adminClient = createAdminClient();
 
-    // Fetch foto_url before deleting record
+    // Fetch full detail before deleting record
     const { data: pegawai } = await adminClient
       .from("pegawai")
-      .select("foto_url")
+      .select("*")
       .eq("id", id)
       .single();
 
@@ -111,6 +123,15 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
 
     // 3. Delete auth user
     await adminClient.auth.admin.deleteUser(id);
+
+    // Log deletion
+    await createLog({
+      kategori: "pegawai",
+      aksi: "delete",
+      deskripsi: `Menghapus pegawai: ${pegawai?.nama || id}`,
+      data_sebelum: pegawai,
+      ip_address: getClientIp(_request)
+    });
 
     return NextResponse.json({ success: true });
   } catch {

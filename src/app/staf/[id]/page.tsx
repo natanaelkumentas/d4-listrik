@@ -45,11 +45,11 @@ export default async function StafDetailPage({ params }: PageProps) {
     <>
       {/* Compact hero */}
       <section className="bg-gradient-to-br from-primary-950 via-primary-900 to-primary-800 pt-24 pb-8">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8" />
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8" />
       </section>
 
       <section className="py-10">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <DosenDetailClient id={id} />
         </div>
       </section>

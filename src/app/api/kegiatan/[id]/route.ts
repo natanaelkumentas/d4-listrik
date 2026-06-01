@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
+import { createLog, getClientIp } from "@/lib/logging";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -36,10 +37,10 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const body = await request.json();
     const supabase = await createClient();
 
-    // Fetch current to check for removed photos
+    // Fetch current to check for removed photos and for logging
     const { data: currentKegiatan } = await supabase
       .from("kegiatan")
-      .select("foto_urls")
+      .select("*")
       .eq("id", id)
       .single();
 
@@ -83,6 +84,16 @@ export async function PUT(request: NextRequest, { params }: Params) {
       }
     }
 
+    // Log the update
+    await createLog({
+      kategori: "kegiatan",
+      aksi: "update",
+      deskripsi: `Memperbarui kegiatan: ${data.nama}`,
+      data_sebelum: currentKegiatan,
+      data_sesudah: data,
+      ip_address: getClientIp(request)
+    });
+
     return NextResponse.json(data);
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
@@ -98,10 +109,10 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     const { id } = await params;
     const supabase = await createClient();
 
-    // Fetch before delete to get foto_urls
+    // Fetch before delete for details
     const { data: kegiatan } = await supabase
       .from("kegiatan")
-      .select("foto_urls")
+      .select("*")
       .eq("id", id)
       .single();
 
@@ -131,6 +142,15 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
         await adminSupabase.storage.from("galeri").remove(fileNames);
       }
     }
+
+    // Log the deletion
+    await createLog({
+      kategori: "kegiatan",
+      aksi: "delete",
+      deskripsi: `Menghapus kegiatan: ${kegiatan.nama}`,
+      data_sebelum: kegiatan,
+      ip_address: getClientIp(_request)
+    });
 
     return NextResponse.json({ success: true });
   } catch {

@@ -1,23 +1,50 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireRole } from "@/lib/auth";
+import { requireRole, getUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
+import { createLog, getClientIp } from "@/lib/logging";
 
-// GET /api/dosen — Public: List all dosen
+// GET /api/dosen — Public: List all dosen (with privacy filtering)
 export async function GET() {
   try {
     const adminSupabase = createAdminClient();
 
     const { data, error } = await adminSupabase
       .from("dosen")
-      .select("id, nama, nidn, foto_url, jabatan, pangkat, email, telepon, bidang_keahlian, program_studi, pendidikan_terakhir")
+      .select("id, nama, nip, foto_url, jabatan, pangkat, email, telepon, bidang_keahlian, program_studi, pendidikan_terakhir, social_media, visibility_settings")
       .order("updated_at", { ascending: false });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    const user = await getUser();
+    const isAdminOrStaff = user && (user.role === "admin" || user.role === "pegawai" || user.role === "dosen");
+
+    let resultData = data || [];
+    if (!isAdminOrStaff) {
+      resultData = resultData.map((d: any) => {
+        const vis = d.visibility_settings || {};
+        const sm = d.social_media || {};
+        const filteredSm: any = {};
+        
+        Object.keys(sm).forEach((key) => {
+          if (vis[key] !== false) {
+            filteredSm[key] = sm[key];
+          }
+        });
+
+        return {
+          ...d,
+          email: vis.email !== false ? d.email : null,
+          telepon: vis.telepon !== false ? d.telepon : null,
+          social_media: filteredSm,
+          visibility_settings: undefined
+        };
+      });
+    }
+
+    return NextResponse.json(resultData);
   } catch {
     return NextResponse.json(
       { error: "Internal server error" },
@@ -35,7 +62,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       nama,
-      nidn,
+      nip,
       foto_url,
       jabatan,
       pangkat,
@@ -45,11 +72,13 @@ export async function POST(request: NextRequest) {
       bidang_keahlian,
       program_studi,
       pendidikan_terakhir,
+      social_media,
+      visibility_settings,
     } = body;
 
-    if (!nama || !nidn) {
+    if (!nama || !nip) {
       return NextResponse.json(
-        { error: "nama and nidn are required" },
+        { error: "nama and nip are required" },
         { status: 400 }
       );
     }
@@ -76,7 +105,7 @@ export async function POST(request: NextRequest) {
         email,
         password,
         email_confirm: true, // Auto-confirm the email
-        user_metadata: { full_name: nama, nidn },
+        user_metadata: { full_name: nama, nip },
       });
 
     if (authError) {
@@ -88,14 +117,14 @@ export async function POST(request: NextRequest) {
 
     const authUserId = authData.user.id;
 
-    // 2. Create profile row (links auth user to role + nidn)
+    // 2. Create profile row (links auth user to role + nip)
     const { error: profileError } = await adminSupabase
       .from("profiles")
       .insert({
         id: authUserId,
         role: "dosen",
         full_name: nama,
-        nidn,
+        nip,
       });
 
     if (profileError) {
@@ -113,7 +142,7 @@ export async function POST(request: NextRequest) {
       .insert({
         id: authUserId,
         nama,
-        nidn,
+        nip,
         foto_url: foto_url || null,
         jabatan: jabatan || null,
         pangkat: pangkat || null,
@@ -122,6 +151,8 @@ export async function POST(request: NextRequest) {
         bidang_keahlian: bidang_keahlian || [],
         program_studi: program_studi || "D4 Teknik Listrik",
         pendidikan_terakhir: pendidikan_terakhir || null,
+        social_media: social_media || {},
+        visibility_settings: visibility_settings || {},
       })
       .select()
       .single();
@@ -135,6 +166,15 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Log the creation
+    await createLog({
+      kategori: "dosen",
+      aksi: "create",
+      deskripsi: `Menambahkan dosen baru: ${nama} (NIP: ${nip})`,
+      data_sesudah: data,
+      ip_address: getClientIp(request)
+    });
 
     return NextResponse.json(
       { ...data, auth_user_id: authUserId },

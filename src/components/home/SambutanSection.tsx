@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { cachedFetch } from "@/lib/fetchCache";
 import Image from "next/image";
+import Link from "next/link";
 
 interface DosenBrief {
   id: string;
@@ -85,17 +86,31 @@ export default function SambutanSection() {
 
                 <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 relative z-10">
                   {/* Photo */}
-                  <div className="shrink-0">
-                    <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full overflow-hidden border-4 border-primary-100 shadow-xl">
-                      <Image
-                        src={sambutanKajur.dosen?.foto_url || "/images/default-profile.svg"}
-                        alt={sambutanKajur.dosen?.nama || "Ketua Jurusan"}
-                        width={144}
-                        height={144}
-                        className="w-full h-full object-cover"
-                      />
+                  {sambutanKajur.dosen?.id ? (
+                    <Link href={`/staf/${sambutanKajur.dosen.id}`} className="group block shrink-0">
+                      <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full overflow-hidden border-4 border-primary-100 shadow-xl group-hover:border-primary-400 group-hover:scale-105 transition-all duration-300">
+                        <Image
+                          src={sambutanKajur.dosen?.foto_url || "/images/default-profile.svg"}
+                          alt={sambutanKajur.dosen?.nama || "Ketua Jurusan"}
+                          width={144}
+                          height={144}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="shrink-0">
+                      <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full overflow-hidden border-4 border-primary-100 shadow-xl">
+                        <Image
+                          src={sambutanKajur.dosen?.foto_url || "/images/default-profile.svg"}
+                          alt={sambutanKajur.dosen?.nama || "Ketua Jurusan"}
+                          width={144}
+                          height={144}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Quote + Name */}
                   <div className="flex-1 text-center md:text-left">
@@ -105,9 +120,15 @@ export default function SambutanSection() {
 
                     <div className="h-px w-16 bg-gradient-to-r from-primary-400 to-accent-400 mx-auto md:mx-0 mb-4" />
 
-                    <p className="font-bold text-primary-950 text-base sm:text-lg">
-                      {sambutanKajur.dosen?.nama}
-                    </p>
+                    {sambutanKajur.dosen?.id ? (
+                      <Link href={`/staf/${sambutanKajur.dosen.id}`} className="font-bold text-primary-950 text-base sm:text-lg hover:text-primary-700 transition-colors block">
+                        {sambutanKajur.dosen?.nama}
+                      </Link>
+                    ) : (
+                      <p className="font-bold text-primary-950 text-base sm:text-lg">
+                        {sambutanKajur.dosen?.nama}
+                      </p>
+                    )}
                     <p className="text-sm text-gray-500 mt-0.5">
                       Ketua Jurusan Teknik Elektro
                     </p>
@@ -140,17 +161,31 @@ export default function SambutanSection() {
                 {/* Alternating row layout (reverse layout) */}
                 <div className="flex flex-col md:flex-row-reverse items-center gap-8 md:gap-12 relative z-10">
                   {/* Photo */}
-                  <div className="shrink-0">
-                    <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full overflow-hidden border-4 border-primary-100 shadow-xl">
-                      <Image
-                        src={sambutanKaprodi.dosen?.foto_url || "/images/default-profile.svg"}
-                        alt={sambutanKaprodi.dosen?.nama || "Ketua Program Studi"}
-                        width={144}
-                        height={144}
-                        className="w-full h-full object-cover"
-                      />
+                  {sambutanKaprodi.dosen?.id ? (
+                    <Link href={`/staf/${sambutanKaprodi.dosen.id}`} className="group block shrink-0">
+                      <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full overflow-hidden border-4 border-primary-100 shadow-xl group-hover:border-primary-400 group-hover:scale-105 transition-all duration-300">
+                        <Image
+                          src={sambutanKaprodi.dosen?.foto_url || "/images/default-profile.svg"}
+                          alt={sambutanKaprodi.dosen?.nama || "Ketua Program Studi"}
+                          width={144}
+                          height={144}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="shrink-0">
+                      <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full overflow-hidden border-4 border-primary-100 shadow-xl">
+                        <Image
+                          src={sambutanKaprodi.dosen?.foto_url || "/images/default-profile.svg"}
+                          alt={sambutanKaprodi.dosen?.nama || "Ketua Program Studi"}
+                          width={144}
+                          height={144}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Quote + Name */}
                   <div className="flex-1 text-center md:text-right">
@@ -160,9 +195,15 @@ export default function SambutanSection() {
 
                     <div className="h-px w-16 bg-gradient-to-r from-primary-400 to-accent-400 mx-auto md:mx-0 mb-4" />
 
-                    <p className="font-bold text-primary-950 text-base sm:text-lg">
-                      {sambutanKaprodi.dosen?.nama}
-                    </p>
+                    {sambutanKaprodi.dosen?.id ? (
+                      <Link href={`/staf/${sambutanKaprodi.dosen.id}`} className="font-bold text-primary-950 text-base sm:text-lg hover:text-primary-700 transition-colors block text-right">
+                        {sambutanKaprodi.dosen?.nama}
+                      </Link>
+                    ) : (
+                      <p className="font-bold text-primary-950 text-base sm:text-lg">
+                        {sambutanKaprodi.dosen?.nama}
+                      </p>
+                    )}
                     <p className="text-sm text-gray-500 mt-0.5">
                       Ketua Program Studi D4 Teknik Listrik
                     </p>

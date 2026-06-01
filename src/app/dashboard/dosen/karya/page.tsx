@@ -116,7 +116,7 @@ export default function DosenKaryaPage() {
 
   useEffect(() => {
     if (user && user.role === "dosen") {
-      const d = dosenList.find((d) => d.nidn === user.nidn);
+      const d = dosenList.find((d) => d.nip === user.nip);
       if (d) setDosen(d);
     }
   }, [user, dosenList]);

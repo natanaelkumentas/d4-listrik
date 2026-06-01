@@ -12,6 +12,7 @@ export default function DosenListClient() {
   const [activeTab, setActiveTab] = useState<"semua" | "dosen" | "pegawai">("semua");
   const [isLoadingPegawai, setIsLoadingPegawai] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [prodiName, setProdiName] = useState("D4 Teknik Listrik");
 
   useEffect(() => {
     ensureDosenLoaded();
@@ -31,7 +32,25 @@ export default function DosenListClient() {
     fetchPegawai();
   }, []);
 
-  const filteredDosen = activeTab === "pegawai" ? [] : dosenList;
+  useEffect(() => {
+    const getProdiName = async () => {
+      try {
+        const data = await cachedFetch<any>("/api/config?section=prodi_info");
+        if (data?.prodi_info?.nama) {
+          setProdiName(data.prodi_info.nama);
+        }
+      } catch (e) {
+        console.error("Failed to fetch prodi name info:", e);
+      }
+    };
+    getProdiName();
+  }, []);
+
+  const filteredDosenList = dosenList.filter(
+    (d) => (d.programStudi || "").trim().toLowerCase() === prodiName.trim().toLowerCase()
+  );
+
+  const filteredDosen = activeTab === "pegawai" ? [] : filteredDosenList;
   const filteredPegawai = activeTab === "dosen" ? [] : pegawaiList;
 
   const combinedList = [
@@ -43,7 +62,6 @@ export default function DosenListClient() {
       const q = searchQuery.toLowerCase();
       return (
         person.nama.toLowerCase().includes(q) ||
-        (person.nidn || "").toLowerCase().includes(q) ||
         (person.nip || "").toLowerCase().includes(q) ||
         (person.jabatan || "").toLowerCase().includes(q)
       );
@@ -52,9 +70,10 @@ export default function DosenListClient() {
 
   const isLoading = !isDosenLoaded || isLoadingPegawai;
 
-  const dosenCount = dosenList.length;
+  const dosenCount = filteredDosenList.length;
   const pegawaiCount = pegawaiList.length;
   const totalCount = dosenCount + pegawaiCount;
+
 
   const getTabCount = (tab: string) => {
     if (tab === "semua") return totalCount;

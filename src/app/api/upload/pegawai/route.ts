@@ -38,8 +38,7 @@ export async function POST(request: NextRequest) {
         .eq("id", pegawaiId)
         .single();
 
-      // Pegawai has NIP just like Dosen has NIDN. If the logged in user is the pegawai itself (checked by NIP), allow it.
-      if (!pegawai || pegawai.nip !== user.nidn) {
+      if (!pegawai || pegawai.nip !== user.nip) {
         return NextResponse.json(
           { error: "Forbidden" },
           { status: 403 }

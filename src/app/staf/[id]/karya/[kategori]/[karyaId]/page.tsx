@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useData } from "@/context/DataContext";
-import { notFound, useParams } from "next/navigation";
+import { notFound, useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { KaryaCategory, karyaCategoryLabels, KaryaItem, PersonLink, Publikasi, Penelitian, Pengabdian, BukuAjar, Hki, Sertifikasi } from "@/types/dosen";
 import { HiArrowLeft, HiOutlineCalendar, HiOutlineDocumentText, HiOutlineLink, HiOutlineBuildingOffice, HiOutlineIdentification, HiOutlineBookOpen, HiOutlineUserGroup } from "react-icons/hi2";
@@ -49,6 +49,7 @@ function InfoItem({ icon: Icon, label, value }: { icon: any, label: string, valu
 }
 
 export default function KaryaDetailPage() {
+  const router = useRouter();
   const params = useParams();
   const id = params.id as string;
   const kategori = params.kategori as string;
@@ -328,13 +329,19 @@ export default function KaryaDetailPage() {
       <section className="py-10 -mt-24">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="animate-fade-in-up">
-            <Link
-              href={`/staf/${id}`}
-              className="inline-flex items-center gap-2 text-sm text-white/90 hover:text-white font-medium mb-6 transition-colors drop-shadow-md"
+            <button
+              onClick={() => {
+                if (window.history.length > 1) {
+                  router.back();
+                } else {
+                  router.push(`/staf/${id}`);
+                }
+              }}
+              className="inline-flex items-center gap-2 text-sm text-white/90 hover:text-white font-medium mb-6 transition-colors drop-shadow-md cursor-pointer bg-transparent border-0"
             >
               <HiArrowLeft className="w-4 h-4" />
               Kembali ke Profil {dosen.nama}
-            </Link>
+            </button>
 
             <div className="bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden">
               {/* === 1. TITLE + META INFO === */}

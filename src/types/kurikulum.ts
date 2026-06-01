@@ -13,6 +13,7 @@ export interface Semester {
 export interface CPLItem {
   kode: string;
   deskripsi: string;
+  kategori?: string | null;
 }
 
 export interface KurikulumAktif {

@@ -56,11 +56,11 @@ export async function POST(request: NextRequest) {
       const supabase = await createClient();
       const { data: dosen } = await supabase
         .from("dosen")
-        .select("nidn")
+        .select("nip")
         .eq("id", dosen_id)
         .single();
 
-      if (!dosen || dosen.nidn !== user.nidn) {
+      if (!dosen || dosen.nip !== user.nip) {
         return NextResponse.json(
           { error: "Forbidden" },
           { status: 403 }

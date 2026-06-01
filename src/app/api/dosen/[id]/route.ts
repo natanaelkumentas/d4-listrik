@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
-import { requireAuth, requireRole } from "@/lib/auth";
+import { requireAuth, requireRole, getUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
+import { createLog, getClientIp } from "@/lib/logging";
 
 type Params = { params: Promise<{ id: string }> };
 
-// GET /api/dosen/[id] — Public: Get single dosen with all karya
+// GET /api/dosen/[id] — Public: Get single dosen with all karya (privacy filtered)
 export async function GET(_request: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
@@ -12,7 +13,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
     const { data: dosen, error } = await supabase
       .from("dosen")
-      .select("id, nama, nidn, foto_url, jabatan, pangkat, email, telepon, bidang_keahlian, program_studi, pendidikan_terakhir")
+      .select("id, nama, nip, foto_url, jabatan, pangkat, email, telepon, bidang_keahlian, program_studi, pendidikan_terakhir, social_media, visibility_settings")
       .eq("id", id)
       .single();
 
@@ -30,7 +31,32 @@ export async function GET(_request: NextRequest, { params }: Params) {
       .eq("dosen_id", id)
       .order("tahun", { ascending: false });
 
-    return NextResponse.json({ ...dosen, karya: karya || [] });
+    // Privacy logic
+    const requester = await getUser();
+    const isAuthorized = requester && (requester.role === "admin" || requester.id === id);
+
+    let filteredDosen = { ...dosen };
+    if (!isAuthorized) {
+      const vis = dosen.visibility_settings || {};
+      const sm = dosen.social_media || {};
+      const filteredSm: any = {};
+
+      Object.keys(sm).forEach((key) => {
+        if (vis[key] !== false) {
+          filteredSm[key] = sm[key];
+        }
+      });
+
+      filteredDosen = {
+        ...dosen,
+        email: vis.email !== false ? dosen.email : null,
+        telepon: vis.telepon !== false ? dosen.telepon : null,
+        social_media: filteredSm,
+        visibility_settings: undefined
+      };
+    }
+
+    return NextResponse.json({ ...filteredDosen, karya: karya || [] });
   } catch {
     return NextResponse.json(
       { error: "Internal server error" },
@@ -53,11 +79,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
       const supabase = await createClient();
       const { data: dosen } = await supabase
         .from("dosen")
-        .select("nidn")
+        .select("nip")
         .eq("id", id)
         .single();
 
-      if (!dosen || dosen.nidn !== user.nidn) {
+      if (!dosen || dosen.nip !== user.nip) {
         return NextResponse.json(
           { error: "Forbidden" },
           { status: 403 }
@@ -66,7 +92,20 @@ export async function PUT(request: NextRequest, { params }: Params) {
     }
 
     const body = await request.json();
-    const { nama, foto_url, jabatan, pangkat, email, telepon, bidang_keahlian, program_studi, pendidikan_terakhir, password } = body;
+    const {
+      nama,
+      foto_url,
+      jabatan,
+      pangkat,
+      email,
+      telepon,
+      bidang_keahlian,
+      program_studi,
+      pendidikan_terakhir,
+      password,
+      social_media,
+      visibility_settings,
+    } = body;
 
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const adminSupabase = createAdminClient();
@@ -97,6 +136,13 @@ export async function PUT(request: NextRequest, { params }: Params) {
       }
     }
 
+    // Fetch current data for audit trail logs
+    const { data: beforeData } = await adminSupabase
+      .from("dosen")
+      .select("*")
+      .eq("id", id)
+      .single();
+
     const updateData: Record<string, unknown> = {};
     if (nama !== undefined) updateData.nama = nama;
     if (foto_url !== undefined) updateData.foto_url = foto_url;
@@ -107,12 +153,8 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (bidang_keahlian !== undefined) updateData.bidang_keahlian = bidang_keahlian;
     if (program_studi !== undefined) updateData.program_studi = program_studi;
     if (pendidikan_terakhir !== undefined) updateData.pendidikan_terakhir = pendidikan_terakhir;
-
-    const { data: currentDosen } = await adminSupabase
-      .from("dosen")
-      .select("foto_url")
-      .eq("id", id)
-      .single();
+    if (social_media !== undefined) updateData.social_media = social_media;
+    if (visibility_settings !== undefined) updateData.visibility_settings = visibility_settings;
 
     const { data, error } = await adminSupabase
       .from("dosen")
@@ -125,13 +167,24 @@ export async function PUT(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    if (currentDosen?.foto_url && currentDosen.foto_url !== data.foto_url) {
-      const parts = currentDosen.foto_url.split("/storage/v1/object/public/dosen/");
+    // Clean up storage if photo was changed
+    if (beforeData?.foto_url && beforeData.foto_url !== data.foto_url) {
+      const parts = beforeData.foto_url.split("/storage/v1/object/public/dosen/");
       if (parts.length > 1) {
         const fileName = parts[1];
         await adminSupabase.storage.from("dosen").remove([fileName]);
       }
     }
+
+    // Log the change
+    await createLog({
+      kategori: "dosen",
+      aksi: "update",
+      deskripsi: `Memperbarui profil dosen: ${data.nama}`,
+      data_sebelum: beforeData,
+      data_sesudah: data,
+      ip_address: getClientIp(request)
+    });
 
     return NextResponse.json(data);
   } catch (err: any) {
@@ -153,10 +206,10 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const adminClient = createAdminClient();
 
-    // Fetch foto_url before deleting record
+    // Fetch full dosen details before deleting record for logs & photo deletion
     const { data: dosen } = await adminClient
       .from("dosen")
-      .select("foto_url")
+      .select("*")
       .eq("id", id)
       .single();
 
@@ -184,6 +237,15 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
 
     // 3. Delete auth user
     await adminClient.auth.admin.deleteUser(id);
+
+    // Log the deletion
+    await createLog({
+      kategori: "dosen",
+      aksi: "delete",
+      deskripsi: `Menghapus dosen: ${dosen?.nama || id}`,
+      data_sebelum: dosen,
+      ip_address: getClientIp(_request)
+    });
 
     return NextResponse.json({ message: "Dosen deleted successfully" });
   } catch {

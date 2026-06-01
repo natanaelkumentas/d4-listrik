@@ -22,7 +22,7 @@ export default function KaryaTabs({ dosen }: { dosen: Dosen }) {
   return (
     <div>
       {/* Tab buttons */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-6 w-full">
         {categories.map((cat) => {
           const count = dosen.karya[cat].length;
           const isActive = activeTab === cat;
@@ -30,7 +30,7 @@ export default function KaryaTabs({ dosen }: { dosen: Dosen }) {
             <button
               key={cat}
               onClick={() => setActiveTab(cat)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
+              className={`inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer w-full text-center ${
                 isActive
                   ? "bg-primary-600 text-white shadow-md"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"

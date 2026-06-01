@@ -9,7 +9,6 @@ interface StafCardProps {
   person: {
     id: string;
     nama: string;
-    nidn?: string;
     nip?: string;
     foto?: string | null;
     foto_url?: string | null;
@@ -29,8 +28,8 @@ interface StafCardProps {
 export default function DosenCard({ person, type, index }: StafCardProps) {
   const color = avatarColors[index % avatarColors.length];
   const photo = type === "dosen" ? person.foto : person.foto_url;
-  const identifierLabel = type === "dosen" ? "NIDN" : "NIP";
-  const identifierValue = type === "dosen" ? person.nidn : person.nip;
+  const identifierLabel = "NIP";
+  const identifierValue = person.nip;
 
   const totalKarya = type === "dosen" && person.karya
     ? (person.karya.publikasi?.length || 0) +

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useData } from "@/context/DataContext";
-import { notFound, useParams } from "next/navigation";
+import { notFound, useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   HiArrowLeft,
@@ -58,7 +58,7 @@ function PersonBadgeList({ title, persons }: { title: string, persons: any }) {
   );
 }
 
-function InfoItem({ icon: Icon, label, value }: { icon: any, label: string, value?: string }) {
+function InfoItem({ icon: Icon, label, value }: { icon: any, label: string, value?: React.ReactNode }) {
   if (!value) return null;
   return (
     <div className="flex items-start gap-3 min-w-[200px]">
@@ -67,16 +67,17 @@ function InfoItem({ icon: Icon, label, value }: { icon: any, label: string, valu
       </div>
       <div className="min-w-0">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
-        <p className="text-gray-800 font-medium mt-1 text-sm sm:text-base break-words">{value}</p>
+        <div className="text-gray-800 font-medium mt-1 text-sm sm:text-base break-words">{value}</div>
       </div>
     </div>
   );
 }
 
 export default function GaleriDetailPage() {
+  const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const { galeriList, ensureGaleriLoaded, isGaleriLoaded, dosenList, ensureDosenLoaded } = useData();
+  const { dosenList, ensureDosenLoaded } = useData();
   
   const [karyaItem, setKaryaItem] = useState<GaleriItem | null>(null);
   const [originalKarya, setOriginalKarya] = useState<any | null>(null);
@@ -91,9 +92,8 @@ export default function GaleriDetailPage() {
   const [isFasilitasLoading, setIsFasilitasLoading] = useState(false);
 
   useEffect(() => {
-    ensureGaleriLoaded();
     ensureDosenLoaded();
-  }, [ensureGaleriLoaded, ensureDosenLoaded]);
+  }, [ensureDosenLoaded]);
 
   // If it's a karya-prefixed ID, fetch from karya API
   const isKarya = id.startsWith("karya-");
@@ -189,17 +189,13 @@ export default function GaleriDetailPage() {
     ? karyaItem
     : isKegiatan
       ? kegiatanItem
-      : isFasilitas
-        ? fasilitasItem
-        : galeriList.find((g) => g.id === id);
+      : fasilitasItem;
 
   const isLoading = isKarya
     ? isKaryaLoading
     : isKegiatan
       ? isKegiatanLoading
-      : isFasilitas
-        ? isFasilitasLoading
-        : !isGaleriLoaded;
+      : isFasilitasLoading;
 
   if (isLoading) return (
     <div className="min-h-[50vh] flex flex-col items-center justify-center">
@@ -428,19 +424,25 @@ export default function GaleriDetailPage() {
   return (
     <>
       <section className={`bg-gradient-to-br ${item.warna} pt-24 pb-8 min-h-[250px]`}>
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8" />
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8" />
       </section>
 
       <section className="py-10 -mt-24">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="animate-fade-in-up">
-            <Link
-              href="/galeri"
-              className="inline-flex items-center gap-2 text-sm text-white/90 hover:text-white font-medium mb-6 transition-colors drop-shadow-md"
+            <button
+              onClick={() => {
+                if (window.history.length > 1) {
+                  router.back();
+                } else {
+                  router.push("/galeri");
+                }
+              }}
+              className="inline-flex items-center gap-2 text-sm text-white/90 hover:text-white font-medium mb-6 transition-colors drop-shadow-md cursor-pointer bg-transparent border-0"
             >
               <HiArrowLeft className="w-4 h-4" />
               Kembali ke Galeri
-            </Link>
+            </button>
 
             <div className="bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden">
               {/* === 1. TITLE + META INFO === */}
@@ -474,7 +476,25 @@ export default function GaleriDetailPage() {
                         <InfoItem icon={HiOutlineBuildingOffice} label="Nomor Ruangan" value={`Ruang ${originalFasilitas.no_ruangan}`} />
                       )}
                       {originalFasilitas.kepala_lab && (
-                        <InfoItem icon={HiOutlineUserGroup} label="Kepala Lab / Ruang" value={originalFasilitas.kepala_lab} />
+                        <InfoItem 
+                          icon={HiOutlineUserGroup} 
+                          label="Kepala Lab / Ruang" 
+                          value={(() => {
+                            const cleanName = originalFasilitas.kepala_lab.split(",")[0].trim().toLowerCase();
+                            const matched = dosenList.find((d) => {
+                              const cleanDosenName = d.nama.split(",")[0].trim().toLowerCase();
+                              return cleanDosenName === cleanName || cleanDosenName.includes(cleanName) || cleanName.includes(cleanDosenName);
+                            });
+                            if (matched) {
+                              return (
+                                <Link href={`/staf/${matched.id}`} className="text-primary-600 hover:underline hover:text-primary-700 transition-colors font-semibold">
+                                  {originalFasilitas.kepala_lab}
+                                </Link>
+                              );
+                            }
+                            return originalFasilitas.kepala_lab;
+                          })()} 
+                        />
                       )}
                     </>
                   )}

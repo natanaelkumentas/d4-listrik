@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
+import { createLog, getClientIp } from "@/lib/logging";
 
 // GET /api/config?section=all|visi_misi_tujuan|prodi_info|footer|kontak|logo|sambutan_kajur|sambutan_kaprodi
 export async function GET(request: NextRequest) {
@@ -58,19 +59,19 @@ export async function GET(request: NextRequest) {
 
     if (shouldFetch("sambutan_kajur")) {
       const { data } = await supabase
-        .from("sambutan_kajur")
+        .from("sambutan")
         .select("id, kutipan, dosen_id, dosen:dosen_id(id, nama, foto_url)")
-        .eq("id", 1)
-        .single();
+        .eq("kategori", "kajur")
+        .maybeSingle();
       result.sambutan_kajur = data || null;
     }
 
     if (shouldFetch("sambutan_kaprodi")) {
       const { data } = await supabase
-        .from("sambutan_kaprodi")
+        .from("sambutan")
         .select("id, kutipan, dosen_id, dosen:dosen_id(id, nama, foto_url)")
-        .eq("id", 1)
-        .single();
+        .eq("kategori", "kaprodi")
+        .maybeSingle();
       result.sambutan_kaprodi = data || null;
     }
 
@@ -86,6 +87,7 @@ export async function PUT(request: NextRequest) {
     const result = await requireRole(["admin", "pegawai"]);
     if (result instanceof NextResponse) return result;
 
+    const ip = getClientIp(request);
     const body = await request.json();
     const { section, data } = body;
 
@@ -100,7 +102,7 @@ export async function PUT(request: NextRequest) {
         // Fetch current to check if hero_bg_url changed/removed
         const { data: current } = await supabase
           .from("prodi_info")
-          .select("hero_bg_url")
+          .select("*")
           .eq("id", 1)
           .single();
 
@@ -118,20 +120,44 @@ export async function PUT(request: NextRequest) {
             await adminSupabase.storage.from("heroBackground").remove([fileName]);
           }
         }
+
+        await createLog({
+          kategori: "config",
+          aksi: "update",
+          deskripsi: "Memperbarui info program studi",
+          data_sebelum: current,
+          data_sesudah: data,
+          ip_address: ip
+        });
         break;
       }
       case "footer": {
+        const { data: current } = await supabase
+          .from("footer")
+          .select("*")
+          .eq("id", 1)
+          .single();
+
         const { error } = await supabase
           .from("footer")
           .upsert({ id: 1, ...data });
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+        await createLog({
+          kategori: "config",
+          aksi: "update",
+          deskripsi: "Memperbarui footer website",
+          data_sebelum: current,
+          data_sesudah: data,
+          ip_address: ip
+        });
         break;
       }
       case "logo": {
         // Fetch current to check if file_url changed/removed
         const { data: current } = await supabase
           .from("logo")
-          .select("file_url")
+          .select("*")
           .eq("id", 1)
           .single();
 
@@ -149,20 +175,59 @@ export async function PUT(request: NextRequest) {
             await adminSupabase.storage.from("galeri").remove([fileName]);
           }
         }
+
+        await createLog({
+          kategori: "config",
+          aksi: "update",
+          deskripsi: "Memperbarui logo website",
+          data_sebelum: current,
+          data_sesudah: data,
+          ip_address: ip
+        });
         break;
       }
       case "sambutan_kajur": {
+        const { data: current } = await supabase
+          .from("sambutan")
+          .select("*")
+          .eq("kategori", "kajur")
+          .maybeSingle();
+
         const { error } = await supabase
-          .from("sambutan_kajur")
-          .upsert({ id: 1, ...data });
+          .from("sambutan")
+          .upsert({ dosen_id: data.dosen_id, kutipan: data.kutipan, kategori: "kajur" }, { onConflict: "kategori" });
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+        await createLog({
+          kategori: "config",
+          aksi: "update",
+          deskripsi: "Memperbarui sambutan Ketua Jurusan",
+          data_sebelum: current,
+          data_sesudah: data,
+          ip_address: ip
+        });
         break;
       }
       case "sambutan_kaprodi": {
+        const { data: current } = await supabase
+          .from("sambutan")
+          .select("*")
+          .eq("kategori", "kaprodi")
+          .maybeSingle();
+
         const { error } = await supabase
-          .from("sambutan_kaprodi")
-          .upsert({ id: 1, ...data });
+          .from("sambutan")
+          .upsert({ dosen_id: data.dosen_id, kutipan: data.kutipan, kategori: "kaprodi" }, { onConflict: "kategori" });
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+        await createLog({
+          kategori: "config",
+          aksi: "update",
+          deskripsi: "Memperbarui sambutan Kaprodi",
+          data_sebelum: current,
+          data_sesudah: data,
+          ip_address: ip
+        });
         break;
       }
 
@@ -171,6 +236,14 @@ export async function PUT(request: NextRequest) {
           .from("visi_misi_tujuan")
           .upsert(data);
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+        await createLog({
+          kategori: "config",
+          aksi: "update",
+          deskripsi: "Memperbarui data Visi Misi Tujuan",
+          data_sesudah: data,
+          ip_address: ip
+        });
         break;
       }
       case "kontak": {
@@ -178,6 +251,14 @@ export async function PUT(request: NextRequest) {
           .from("kontak")
           .upsert(data);
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+        await createLog({
+          kategori: "config",
+          aksi: "update",
+          deskripsi: "Memperbarui data Kontak website",
+          data_sesudah: data,
+          ip_address: ip
+        });
         break;
       }
       default:
@@ -196,6 +277,7 @@ export async function POST(request: NextRequest) {
     const result = await requireRole(["admin", "pegawai"]);
     if (result instanceof NextResponse) return result;
 
+    const ip = getClientIp(request);
     const body = await request.json();
     const { section, data } = body;
 
@@ -213,6 +295,15 @@ export async function POST(request: NextRequest) {
           .select()
           .single();
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+        await createLog({
+          kategori: "config",
+          aksi: "create",
+          deskripsi: `Menambahkan item Visi Misi Tujuan: ${data.konten?.substring(0, 30)}...`,
+          data_sesudah: row,
+          ip_address: ip
+        });
+
         return NextResponse.json(row, { status: 201 });
       }
 
@@ -223,6 +314,15 @@ export async function POST(request: NextRequest) {
           .select()
           .single();
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+        await createLog({
+          kategori: "config",
+          aksi: "create",
+          deskripsi: `Menambahkan kontak baru: ${data.nama}`,
+          data_sesudah: row,
+          ip_address: ip
+        });
+
         return NextResponse.json(row, { status: 201 });
       }
       default:
@@ -239,6 +339,7 @@ export async function DELETE(request: NextRequest) {
     const result = await requireRole(["admin", "pegawai"]);
     if (result instanceof NextResponse) return result;
 
+    const ip = getClientIp(request);
     const section = request.nextUrl.searchParams.get("section");
     const id = request.nextUrl.searchParams.get("id");
 
@@ -253,8 +354,23 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: `Cannot DELETE from section: ${section}` }, { status: 400 });
     }
 
+    // Fetch before deletion
+    const { data: deletedRow } = await supabase
+      .from(section)
+      .select("*")
+      .eq("id", id)
+      .single();
+
     const { error } = await supabase.from(section).delete().eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    await createLog({
+      kategori: "config",
+      aksi: "delete",
+      deskripsi: `Menghapus item dari ${section}`,
+      data_sebelum: deletedRow,
+      ip_address: ip
+    });
 
     return NextResponse.json({ success: true });
   } catch {

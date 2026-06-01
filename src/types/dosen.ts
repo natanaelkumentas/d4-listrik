@@ -55,7 +55,7 @@ export type KaryaItem = Publikasi | Penelitian | Pengabdian | BukuAjar | Hki | S
 export interface Dosen {
   id: string;
   nama: string;
-  nidn: string;
+  nip: string;
   foto?: string | null;
   jabatan?: string;
   pangkat?: string;
@@ -64,6 +64,8 @@ export interface Dosen {
   programStudi?: string;
   pendidikanTerakhir?: string;
   bidangKeahlian: string[];
+  social_media?: Record<string, string>;
+  visibility_settings?: Record<string, boolean>;
   karya: {
     publikasi: Publikasi[];
     penelitian: Penelitian[];

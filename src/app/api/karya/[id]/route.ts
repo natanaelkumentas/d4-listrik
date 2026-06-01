@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
+import { createLog, getClientIp } from "@/lib/logging";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -17,7 +18,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     // Fetch karya to check ownership
     const { data: karya } = await supabase
       .from("karya")
-      .select("dosen_id")
+      .select("*")
       .eq("id", id)
       .single();
 
@@ -32,11 +33,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (user.role !== "admin") {
       const { data: dosen } = await supabase
         .from("dosen")
-        .select("nidn")
+        .select("nip")
         .eq("id", karya.dosen_id)
         .single();
 
-      if (!dosen || dosen.nidn !== user.nidn) {
+      if (!dosen || dosen.nip !== user.nip) {
         return NextResponse.json(
           { error: "Forbidden" },
           { status: 403 }
@@ -55,12 +56,6 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (metadata !== undefined) updateData.metadata = metadata;
     if (foto_urls !== undefined) updateData.foto_urls = foto_urls;
 
-    const { data: currentKarya } = await supabase
-      .from("karya")
-      .select("foto_urls")
-      .eq("id", id)
-      .single();
-
     const { data, error } = await supabase
       .from("karya")
       .update(updateData)
@@ -73,9 +68,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
     }
 
     // Compare and delete any removed files
-    if (currentKarya?.foto_urls && Array.isArray(currentKarya.foto_urls)) {
+    if (karya?.foto_urls && Array.isArray(karya.foto_urls)) {
       const newUrls = new Set(data?.foto_urls || []);
-      const removedUrls = currentKarya.foto_urls.filter((url: string) => !newUrls.has(url));
+      const removedUrls = karya.foto_urls.filter((url: string) => !newUrls.has(url));
 
       if (removedUrls.length > 0) {
         const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -90,6 +85,16 @@ export async function PUT(request: NextRequest, { params }: Params) {
         }
       }
     }
+
+    // Log the change
+    await createLog({
+      kategori: "karya",
+      aksi: "update",
+      deskripsi: `Memperbarui karya: ${data.judul}`,
+      data_sebelum: karya,
+      data_sesudah: data,
+      ip_address: getClientIp(request)
+    });
 
     return NextResponse.json(data);
   } catch {
@@ -110,10 +115,10 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     const user = result;
     const supabase = await createClient();
 
-    // Fetch karya to check ownership and get foto_urls
+    // Fetch karya to check ownership and get details
     const { data: karya } = await supabase
       .from("karya")
-      .select("dosen_id, foto_urls")
+      .select("*")
       .eq("id", id)
       .single();
 
@@ -128,11 +133,11 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     if (user.role !== "admin") {
       const { data: dosen } = await supabase
         .from("dosen")
-        .select("nidn")
+        .select("nip")
         .eq("id", karya.dosen_id)
         .single();
 
-      if (!dosen || dosen.nidn !== user.nidn) {
+      if (!dosen || dosen.nip !== user.nip) {
         return NextResponse.json(
           { error: "Forbidden" },
           { status: 403 }
@@ -162,6 +167,15 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
         await adminSupabase.storage.from("galeri").remove(fileNames);
       }
     }
+
+    // Log the deletion
+    await createLog({
+      kategori: "karya",
+      aksi: "delete",
+      deskripsi: `Menghapus karya: ${karya.judul}`,
+      data_sebelum: karya,
+      ip_address: getClientIp(_request)
+    });
 
     return NextResponse.json({ message: "Karya deleted successfully" });
   } catch {

@@ -34,11 +34,11 @@ export async function POST(request: NextRequest) {
       const adminSupabase = createAdminClient();
       const { data: dosen } = await adminSupabase
         .from("dosen")
-        .select("nidn")
+        .select("nip")
         .eq("id", dosenId)
         .single();
 
-      if (!dosen || dosen.nidn !== user.nidn) {
+      if (!dosen || dosen.nip !== user.nip) {
         return NextResponse.json(
           { error: "Forbidden" },
           { status: 403 }

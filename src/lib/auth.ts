@@ -6,7 +6,7 @@ export interface AuthUser {
   email: string;
   role: "admin" | "dosen" | "pegawai";
   full_name: string | null;
-  nidn: string | null;
+  nip: string | null;
 }
 
 /**
@@ -23,10 +23,10 @@ export async function getUser(): Promise<AuthUser | null> {
 
   if (error || !user) return null;
 
-  // Fetch profile to get role + nidn
+  // Fetch profile to get role + nip
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, full_name, nidn")
+    .select("role, full_name, nip")
     .eq("id", user.id)
     .single();
 
@@ -37,7 +37,7 @@ export async function getUser(): Promise<AuthUser | null> {
     email: user.email!,
     role: profile.role as "admin" | "dosen" | "pegawai",
     full_name: profile.full_name,
-    nidn: profile.nidn,
+    nip: profile.nip,
   };
 }
 

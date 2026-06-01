@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { HiOutlineUser, HiOutlineUserGroup, HiOutlinePhoto, HiOutlineArrowRightOnRectangle, HiOutlineBookOpen, HiOutlineDocumentText, HiOutlineChartBarSquare, HiOutlineCalendar } from "react-icons/hi2";
+import { HiOutlineUser, HiOutlineUserGroup, HiOutlinePhoto, HiOutlineArrowRightOnRectangle, HiOutlineBookOpen, HiOutlineDocumentText, HiOutlineChartBarSquare, HiOutlineCalendar, HiOutlineCheckCircle, HiOutlineClock } from "react-icons/hi2";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout, isLoading } = useAuth();
@@ -35,6 +35,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const pegawaiLinks = [
     { href: "/dashboard/pegawai", label: "Dashboard", icon: HiOutlineUser },
+    { href: "/dashboard/pegawai/profile", label: "Profil Saya", icon: HiOutlineUser },
     { href: "/dashboard/pegawai/kurikulum", label: "Kurikulum", icon: HiOutlineBookOpen },
     { href: "/dashboard/pegawai/fasilitas", label: "Fasilitas", icon: HiOutlinePhoto },
     { href: "/dashboard/pegawai/kegiatan", label: "Kegiatan", icon: HiOutlineCalendar },

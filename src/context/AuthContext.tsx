@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 export interface User {
   role: "admin" | "dosen" | "pegawai";
   id: string; // Supabase auth user ID
-  nidn?: string; // NIDN for dosen
+  nip?: string; // NIP for dosen/pegawai
   name: string;
 }
 
@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser({
               role: data.user.role,
               id: data.user.id,
-              nidn: data.user.nidn || undefined,
+              nip: data.user.nip || undefined,
               name: data.user.full_name || data.user.email,
             });
           } else {
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser({
         role: data.user.role,
         id: data.user.id,
-        nidn: data.user.nidn || undefined,
+        nip: data.user.nip || undefined,
         name: data.user.full_name || data.user.email,
       });
 

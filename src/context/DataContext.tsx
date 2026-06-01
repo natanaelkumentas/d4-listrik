@@ -8,22 +8,15 @@ import { cachedFetch, invalidateCache } from "@/lib/fetchCache";
 
 interface DataContextType {
   dosenList: Dosen[];
-  galeriList: GaleriItem[];
   pegawaiList: Pegawai[];
   isLoading: boolean;
   isDosenLoaded: boolean;
-  isGaleriLoaded: boolean;
   isPegawaiLoaded: boolean;
 
   // Dosen Actions
   addDosen: (dosen: Dosen, password?: string) => Promise<void>;
   updateDosen: (id: string, updatedDosen: Dosen, password?: string) => Promise<void>;
   deleteDosen: (id: string) => Promise<void>;
-
-  // Galeri Actions
-  addGaleri: (item: GaleriItem) => Promise<void>;
-  updateGaleri: (id: string, updatedItem: GaleriItem) => Promise<void>;
-  deleteGaleri: (id: string) => Promise<void>;
 
   // Pegawai Actions
   addPegawai: (pegawai: Omit<Pegawai, "id">, password?: string) => Promise<void>;
@@ -32,12 +25,10 @@ interface DataContextType {
 
   // Lazy loaders — only fetch when first consumer needs the data
   ensureDosenLoaded: () => void;
-  ensureGaleriLoaded: () => void;
   ensurePegawaiLoaded: () => void;
 
   // Force refresh
   refreshDosen: () => Promise<void>;
-  refreshGaleri: () => Promise<void>;
   refreshPegawai: () => Promise<void>;
 }
 
@@ -62,7 +53,7 @@ function transformDosenFromApi(raw: any): Dosen {
   return {
     id: raw.id,
     nama: raw.nama,
-    nidn: raw.nidn,
+    nip: raw.nip,
     foto: raw.foto_url || null,
     jabatan: raw.jabatan || undefined,
     pangkat: raw.pangkat || undefined,
@@ -71,6 +62,8 @@ function transformDosenFromApi(raw: any): Dosen {
     programStudi: raw.program_studi || undefined,
     pendidikanTerakhir: raw.pendidikan_terakhir || undefined,
     bidangKeahlian: raw.bidang_keahlian || [],
+    social_media: raw.social_media || {},
+    visibility_settings: raw.visibility_settings || {},
     karya: groupedKarya,
   };
 }
@@ -88,33 +81,14 @@ function mapKarya(k: any) {
   };
 }
 
-/**
- * Transform raw DB galeri row into the GaleriItem shape.
- */
-function transformGaleriFromApi(raw: any): GaleriItem {
-  return {
-    id: raw.id,
-    judul: raw.judul,
-    deskripsi: raw.deskripsi || "",
-    tanggal: raw.tanggal,
-    kategori: raw.kategori,
-    foto: raw.foto_urls || [],
-    warna: "from-blue-500 to-indigo-600", // Default gradient fallback
-    updated_at: raw.updated_at || undefined,
-  };
-}
-
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [dosenList, setDosenList] = useState<Dosen[]>([]);
-  const [galeriList, setGaleriList] = useState<GaleriItem[]>([]);
   const [pegawaiList, setPegawaiList] = useState<Pegawai[]>([]);
   const [isDosenLoaded, setIsDosenLoaded] = useState(false);
-  const [isGaleriLoaded, setIsGaleriLoaded] = useState(false);
   const [isPegawaiLoaded, setIsPegawaiLoaded] = useState(false);
 
   // Refs to prevent duplicate concurrent fetches
   const dosenFetchRef = useRef<Promise<void> | null>(null);
-  const galeriFetchRef = useRef<Promise<void> | null>(null);
   const pegawaiFetchRef = useRef<Promise<void> | null>(null);
 
   const refreshDosen = useCallback(async () => {
@@ -185,16 +159,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const refreshGaleri = useCallback(async () => {
-    try {
-      invalidateCache("/api/galeri");
-      const data = await cachedFetch<any[]>("/api/galeri");
-      setGaleriList(data.map(transformGaleriFromApi));
-    } catch (e) {
-      console.error("Failed to fetch galeri", e);
-    }
-  }, []);
-
   const refreshPegawai = useCallback(async () => {
     try {
       invalidateCache("/api/pegawai");
@@ -215,15 +179,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     dosenFetchRef.current = promise;
   }, [isDosenLoaded, refreshDosen]);
 
-  const ensureGaleriLoaded = useCallback(() => {
-    if (isGaleriLoaded || galeriFetchRef.current) return;
-    const promise = refreshGaleri().then(() => {
-      setIsGaleriLoaded(true);
-      galeriFetchRef.current = null;
-    });
-    galeriFetchRef.current = promise;
-  }, [isGaleriLoaded, refreshGaleri]);
-
   const ensurePegawaiLoaded = useCallback(() => {
     if (isPegawaiLoaded || pegawaiFetchRef.current) return;
     const promise = refreshPegawai().then(() => {
@@ -235,7 +190,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // isLoading is true only when data has been requested but hasn't arrived yet
   const isLoading = (!isDosenLoaded && dosenFetchRef.current !== null) ||
-                    (!isGaleriLoaded && galeriFetchRef.current !== null) ||
                     (!isPegawaiLoaded && pegawaiFetchRef.current !== null);
 
   // --- Dosen Actions ---
@@ -245,7 +199,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nama: dosen.nama,
-        nidn: dosen.nidn,
+        nip: dosen.nip,
         foto_url: dosen.foto || null,
         jabatan: dosen.jabatan || null,
         pangkat: dosen.pangkat || null,
@@ -255,6 +209,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         bidang_keahlian: dosen.bidangKeahlian || [],
         program_studi: dosen.programStudi || "D4 Teknik Listrik",
         pendidikan_terakhir: dosen.pendidikanTerakhir || null,
+        social_media: dosen.social_media || {},
+        visibility_settings: dosen.visibility_settings || {},
       }),
     });
     if (!res.ok) {
@@ -279,6 +235,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         program_studi: updatedDosen.programStudi || "D4 Teknik Listrik",
         pendidikan_terakhir: updatedDosen.pendidikanTerakhir || null,
         password: password || null,
+        social_media: updatedDosen.social_media || {},
+        visibility_settings: updatedDosen.visibility_settings || {},
       }),
     });
     if (!res.ok) {
@@ -295,54 +253,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       throw new Error(err.error || "Failed to delete dosen");
     }
     await refreshDosen();
-  };
-
-  // --- Galeri Actions ---
-  const addGaleri = async (item: GaleriItem) => {
-    const res = await fetch("/api/galeri", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        judul: item.judul,
-        deskripsi: item.deskripsi || null,
-        tanggal: item.tanggal,
-        kategori: item.kategori,
-        foto_urls: item.foto || [],
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || "Failed to add galeri");
-    }
-    await refreshGaleri();
-  };
-
-  const updateGaleri = async (id: string, updatedItem: GaleriItem) => {
-    const res = await fetch(`/api/galeri/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        judul: updatedItem.judul,
-        deskripsi: updatedItem.deskripsi || null,
-        tanggal: updatedItem.tanggal,
-        kategori: updatedItem.kategori,
-        foto_urls: updatedItem.foto || [],
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || "Failed to update galeri");
-    }
-    await refreshGaleri();
-  };
-
-  const deleteGaleri = async (id: string) => {
-    const res = await fetch(`/api/galeri/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || "Failed to delete galeri");
-    }
-    await refreshGaleri();
   };
 
   // --- Pegawai Actions ---
@@ -399,13 +309,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <DataContext.Provider value={{
-      dosenList, galeriList, pegawaiList, isLoading,
-      isDosenLoaded, isGaleriLoaded, isPegawaiLoaded,
+      dosenList, pegawaiList, isLoading,
+      isDosenLoaded, isPegawaiLoaded,
       addDosen, updateDosen, deleteDosen,
-      addGaleri, updateGaleri, deleteGaleri,
       addPegawai, updatePegawai, deletePegawai,
-      ensureDosenLoaded, ensureGaleriLoaded, ensurePegawaiLoaded,
-      refreshDosen, refreshGaleri, refreshPegawai,
+      ensureDosenLoaded, ensurePegawaiLoaded,
+      refreshDosen, refreshPegawai,
     }}>
       {children}
     </DataContext.Provider>

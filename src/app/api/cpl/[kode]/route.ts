@@ -12,12 +12,12 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     const { kode } = await params;
     const body = await request.json();
-    const { deskripsi } = body;
+    const { deskripsi, kategori } = body;
 
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("cpl")
-      .update({ deskripsi })
+      .update({ deskripsi, kategori: kategori !== undefined ? (kategori || null) : undefined })
       .eq("kode", kode)
       .select()
       .single();

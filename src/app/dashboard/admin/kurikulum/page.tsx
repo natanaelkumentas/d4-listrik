@@ -11,7 +11,8 @@ import { useNotification } from "@/context/NotificationContext";
 import TablePagination from "@/components/universal/TablePagination";
 
 interface MataKuliah { kode: string; nama: string; sks: number; semester: number; jenis: string | null; deskripsi?: string | null; }
-interface Cpl { kode: string; deskripsi: string; }
+interface Cpl { kode: string; deskripsi: string; kategori?: string | null; }
+interface CplKategori { id: number; nama: string; }
 interface KurikulumAktif { nama: string; deskripsi: string; berlaku_sejak: string; file_url: string | null; }
 interface VisiMisiRow {
   id: string;
@@ -36,6 +37,10 @@ export default function AdminKurikulumPage() {
   const [cplModalOpen, setCplModalOpen] = useState(false);
   const [cplEditingKode, setCplEditingKode] = useState<string | null>(null);
   const [cplForm, setCplForm] = useState<Partial<Cpl>>({});
+  const [categories, setCategories] = useState<CplKategori[]>([]);
+  const [catModalOpen, setCatModalOpen] = useState(false);
+  const [catName, setCatName] = useState("");
+  const [isCatSubmitting, setIsCatSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isMkLoading, setIsMkLoading] = useState(false);
   const [isCplLoading, setIsCplLoading] = useState(false);
@@ -101,14 +106,28 @@ export default function AdminKurikulumPage() {
       .finally(() => setIsMkLoading(false));
   }, [activeTab]);
 
+  const fetchCategories = async () => {
+    try {
+      const data = await cachedFetch<CplKategori[]>("/api/cpl-kategori");
+      if (data) setCategories(data);
+    } catch (e) {
+      console.error("Failed to fetch CPL categories", e);
+    }
+  };
+
   // Lazy fetch CPL when tab is first accessed
   useEffect(() => {
     if (activeTab !== "cpl" || hasFetchedCPL.current) return;
     hasFetchedCPL.current = true;
     setIsCplLoading(true);
-    cachedFetch<Cpl[]>("/api/cpl")
-      .then(data => setCplList(data || []))
-      .catch(e => console.error("Failed to fetch CPL", e))
+    Promise.all([
+      cachedFetch<Cpl[]>("/api/cpl"),
+      fetchCategories()
+    ])
+      .then(([cplData]) => {
+        if (cplData) setCplList(cplData);
+      })
+      .catch(e => console.error("Failed to fetch CPL data", e))
       .finally(() => setIsCplLoading(false));
   }, [activeTab]);
 
@@ -236,7 +255,7 @@ export default function AdminKurikulumPage() {
     e.preventDefault();
     try {
       if (cplEditingKode) {
-        const res = await fetch(`/api/cpl/${encodeURIComponent(cplEditingKode)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deskripsi: cplForm.deskripsi }) });
+        const res = await fetch(`/api/cpl/${encodeURIComponent(cplEditingKode)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deskripsi: cplForm.deskripsi, kategori: cplForm.kategori }) });
         if (!res.ok) {
           const err = await res.json();
           throw new Error(err.error || "Gagal mengubah CPL");
@@ -259,6 +278,32 @@ export default function AdminKurikulumPage() {
       router.refresh();
     } catch (err: any) {
       showError(err.message || "Gagal menyimpan CPL");
+    }
+  };
+
+  const handleCatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!catName.trim()) return;
+    setIsCatSubmitting(true);
+    try {
+      const res = await fetch("/api/cpl-kategori", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nama: catName.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Gagal membuat kategori");
+      }
+      invalidateCache("/api/cpl-kategori");
+      await fetchCategories();
+      setCatModalOpen(false);
+      setCatName("");
+      showSuccess("Kategori CPL baru berhasil ditambahkan!");
+    } catch (err: any) {
+      showError(err.message || "Gagal menambahkan kategori");
+    } finally {
+      setIsCatSubmitting(false);
     }
   };
 
@@ -795,21 +840,41 @@ export default function AdminKurikulumPage() {
                 </button>
               )}
             </div>
-            <button onClick={() => { setCplEditingKode(null); setCplForm({ kode: "", deskripsi: "" }); setCplModalOpen(true); }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors shadow-sm cursor-pointer w-full sm:w-auto justify-center">
-              <HiOutlinePlus className="w-5 h-5" /> Tambah CPL
-            </button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button onClick={() => { setCatModalOpen(true); setCatName(""); }}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 bg-white rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm cursor-pointer justify-center w-full sm:w-auto">
+                <HiOutlinePlus className="w-5 h-5 text-gray-400" /> Kategori CPL
+              </button>
+              <button onClick={() => { setCplEditingKode(null); setCplForm({ kode: "", deskripsi: "", kategori: "" }); setCplModalOpen(true); }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors shadow-sm cursor-pointer justify-center w-full sm:w-auto">
+                <HiOutlinePlus className="w-5 h-5" /> Tambah CPL
+              </button>
+            </div>
           </div>
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-gray-600">
                 <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-100">
-                  <tr><th className="px-6 py-4 w-28">Kode</th><th className="px-6 py-4">Deskripsi</th><th className="px-6 py-4 text-right w-28">Aksi</th></tr>
+                  <tr>
+                    <th className="px-6 py-4 w-28">Kode</th>
+                    <th className="px-6 py-4 w-40">Kategori</th>
+                    <th className="px-6 py-4">Deskripsi</th>
+                    <th className="px-6 py-4 text-right w-28">Aksi</th>
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {paginatedCpl.map(cpl => (
                     <tr key={cpl.kode} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-3 font-mono text-xs font-bold text-primary-700">{cpl.kode}</td>
+                      <td className="px-6 py-3">
+                        {cpl.kategori ? (
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-bold uppercase bg-primary-50 text-primary-700 border border-primary-100">
+                            {cpl.kategori}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
+                      </td>
                       <td className="px-6 py-3 text-gray-900 text-sm leading-relaxed">{cpl.deskripsi}</td>
                       <td className="px-6 py-3 text-right space-x-1">
                         <button onClick={() => { setCplEditingKode(cpl.kode); setCplForm(cpl); setCplModalOpen(true); }} className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary-600 hover:bg-primary-50 transition-colors cursor-pointer" title="Edit"><HiOutlinePencilSquare className="w-4 h-4" /></button>
@@ -817,7 +882,7 @@ export default function AdminKurikulumPage() {
                       </td>
                     </tr>
                   ))}
-                  {filteredCpl.length === 0 && <tr><td colSpan={3} className="px-6 py-8 text-center text-gray-400">Tidak ada data CPL.</td></tr>}
+                  {filteredCpl.length === 0 && <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-400">Tidak ada data CPL.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -833,6 +898,15 @@ export default function AdminKurikulumPage() {
           <Modal isOpen={cplModalOpen} onClose={() => setCplModalOpen(false)} title={cplEditingKode ? "Edit CPL" : "Tambah CPL"}>
             <form onSubmit={handleCplSubmit} className="space-y-4">
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Kode CPL</label><input type="text" required disabled={!!cplEditingKode} value={cplForm.kode || ""} onChange={e => setCplForm({ ...cplForm, kode: e.target.value })} className={cplEditingKode ? disabledInputCls : inputCls} placeholder="CPL-01" /></div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kategori CPL (opsional)</label>
+                <ComboBox
+                  options={categories.map(c => ({ id: c.nama, nama: c.nama }))}
+                  value={cplForm.kategori || ""}
+                  onChange={val => setCplForm({ ...cplForm, kategori: val })}
+                  placeholder="Pilih Kategori CPL..."
+                />
+              </div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label><textarea required rows={4} value={cplForm.deskripsi || ""} onChange={e => setCplForm({ ...cplForm, deskripsi: e.target.value })} className={inputCls + " resize-none"} /></div>
               <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6">
                 <button type="button" onClick={() => setCplModalOpen(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Batal</button>
@@ -881,6 +955,39 @@ export default function AdminKurikulumPage() {
               className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
             >
               {isVisiMisiSubmitting ? "Menyimpan..." : "Simpan"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={catModalOpen} onClose={() => setCatModalOpen(false)} title="Tambah Kategori CPL">
+        <form onSubmit={handleCatSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nama Kategori</label>
+            <input
+              type="text"
+              required
+              value={catName}
+              onChange={(e) => setCatName(e.target.value)}
+              className={inputCls}
+              placeholder="Contoh: Sikap, Keterampilan Umum"
+            />
+          </div>
+          <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6">
+            <button
+              type="button"
+              onClick={() => setCatModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+              disabled={isCatSubmitting}
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={isCatSubmitting}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+            >
+              {isCatSubmitting ? "Menyimpan..." : "Simpan"}
             </button>
           </div>
         </form>

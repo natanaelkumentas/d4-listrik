@@ -16,14 +16,34 @@ import {
   HiOutlineEyeSlash, 
   HiOutlineUserGroup, 
   HiOutlineUser, 
-  HiOutlineMagnifyingGlass 
+  HiOutlineMagnifyingGlass,
+  HiCheck,
+  HiXMark,
+  HiClock,
+  HiEye,
+  HiOutlineExclamationTriangle
 } from "react-icons/hi2";
 import Image from "next/image";
-import { maskNidn, maskNip, maskPhone } from "@/lib/masks";
+import { maskNip, maskPhone } from "@/lib/masks";
 import { useNotification } from "@/context/NotificationContext";
 import TablePagination from "@/components/universal/TablePagination";
 
-type TabType = "dosen" | "pegawai";
+interface PendingProfileRequest {
+  id: string;
+  user_id: string;
+  role: "dosen" | "pegawai";
+  data: any;
+  status: "pending" | "approved" | "rejected";
+  rejected_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  profiles: {
+    email: string;
+    full_name: string;
+  } | null;
+}
+
+type TabType = "dosen" | "pegawai" | "verifikasi";
 
 export default function AdminStafPage() {
   const router = useRouter();
@@ -39,6 +59,17 @@ export default function AdminStafPage() {
   const [dosenPageSize, setDosenPageSize] = useState(10);
   const [pegawaiPage, setPegawaiPage] = useState(1);
   const [pegawaiPageSize, setPegawaiPageSize] = useState(10);
+  const [verifikasiPage, setVerifikasiPage] = useState(1);
+  const [verifikasiPageSize, setVerifikasiPageSize] = useState(10);
+
+  // Verifikasi Profil States
+  const [requests, setRequests] = useState<PendingProfileRequest[]>([]);
+  const [isVerifikasiLoading, setIsVerifikasiLoading] = useState(true);
+  const [selectedReq, setSelectedReq] = useState<PendingProfileRequest | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isRejectOpen, setIsRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [actionInProgress, setActionInProgress] = useState(false);
 
   // Lazy load datasets depending on the active tab
   useEffect(() => {
@@ -46,8 +77,17 @@ export default function AdminStafPage() {
       ensureDosenLoaded();
     } else if (activeTab === "pegawai") {
       ensurePegawaiLoaded();
+    } else if (activeTab === "verifikasi") {
+      ensureDosenLoaded();
+      ensurePegawaiLoaded();
+      fetchRequests();
     }
   }, [activeTab, ensureDosenLoaded, ensurePegawaiLoaded]);
+
+  // Run fetchRequests on mount to show badge count
+  useEffect(() => {
+    fetchRequests();
+  }, []);
 
   // Modals & Forms State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -75,7 +115,7 @@ export default function AdminStafPage() {
     setShowPassword(false);
     
     if (activeTab === "dosen") {
-      setDosenForm({ nama: "", nidn: "", email: "", bidangKeahlian: [] });
+      setDosenForm({ nama: "", nip: "", email: "", bidangKeahlian: [], social_media: {}, visibility_settings: {} });
       setBidangInput("");
     } else {
       setPegawaiForm({ nama: "", nip: "", email: "", telepon: "", pendidikan_terakhir: "" });
@@ -86,11 +126,38 @@ export default function AdminStafPage() {
 
   const handleOpenEditDosen = (dosen: Dosen) => {
     setEditingId(dosen.id);
-    setDosenForm(dosen);
+    setDosenForm({
+      ...dosen,
+      social_media: dosen.social_media || {},
+      visibility_settings: dosen.visibility_settings || {},
+    });
     setBidangInput(dosen.bidangKeahlian?.join(", ") || "");
     setPassword("");
     setShowPassword(false);
     setIsModalOpen(true);
+  };
+
+  const updateDosenSocialMedia = (platform: string, value: string) => {
+    setDosenForm(prev => ({
+      ...prev,
+      social_media: {
+        ...(prev.social_media || {}),
+        [platform]: value
+      }
+    }));
+  };
+
+  const toggleDosenVisibility = (key: string) => {
+    setDosenForm(prev => {
+      const currentVal = prev.visibility_settings?.[key] !== false; // default to true
+      return {
+        ...prev,
+        visibility_settings: {
+          ...(prev.visibility_settings || {}),
+          [key]: !currentVal
+        }
+      };
+    });
   };
 
   const handleOpenEditPegawai = (pegawai: Pegawai) => {
@@ -242,10 +309,129 @@ export default function AdminStafPage() {
     }
   };
 
+  const fetchRequests = async () => {
+    setIsVerifikasiLoading(true);
+    try {
+      const res = await fetch("/api/profile-pending");
+      if (res.ok) {
+        const data = await res.json();
+        setRequests(Array.isArray(data) ? data : []);
+      } else {
+        showError("Gagal mengambil data antrean verifikasi.");
+      }
+    } catch (e) {
+      console.error(e);
+      showError("Terjadi kesalahan jaringan.");
+    } finally {
+      setIsVerifikasiLoading(false);
+    }
+  };
+
+  const handleAction = async (reqId: string, status: "approved" | "rejected", reason?: string) => {
+    setActionInProgress(true);
+    try {
+      const res = await fetch("/api/profile-pending", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: reqId,
+          status,
+          rejected_reason: reason || null,
+        }),
+      });
+
+      if (res.ok) {
+        showSuccess(`Permohonan profil berhasil ${status === "approved" ? "disetujui" : "ditolak"}!`);
+        setIsDetailOpen(false);
+        setIsRejectOpen(false);
+        setRejectReason("");
+        setSelectedReq(null);
+        await fetchRequests();
+      } else {
+        const err = await res.json();
+        showError(err.error || "Gagal memproses permohonan.");
+      }
+    } catch (e) {
+      showError("Terjadi kesalahan jaringan.");
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
+  const getLiveProfile = (req: PendingProfileRequest) => {
+    if (req.role === "dosen") {
+      return dosenList.find(d => d.id === req.user_id);
+    } else {
+      return pegawaiList.find(p => p.id === req.user_id);
+    }
+  };
+
+  const renderDiff = (currentVal: any, proposedVal: any, label: string) => {
+    const normalize = (val: any) => {
+      if (val === null || val === undefined) return "—";
+      if (Array.isArray(val)) return val.join(", ") || "—";
+      if (typeof val === "object") return JSON.stringify(val);
+      return String(val);
+    };
+
+    const cStr = normalize(currentVal);
+    const pStr = normalize(proposedVal);
+
+    if (cStr === pStr) return null;
+
+    return (
+      <tr key={label} className="border-b border-gray-100 text-sm">
+        <td className="py-3 px-4 font-bold text-gray-700 w-1/4">{label}</td>
+        <td className="py-3 px-4 text-red-600 bg-red-50/30 line-through w-3/8 truncate max-w-xs">{cStr}</td>
+        <td className="py-3 px-4 text-green-700 bg-green-50/30 font-semibold w-3/8 truncate max-w-xs">{pStr}</td>
+      </tr>
+    );
+  };
+
+  const getDiffs = (req: PendingProfileRequest) => {
+    const live = getLiveProfile(req);
+    const proposed = req.data || {};
+    if (!live) return [renderDiff("—", proposed.nama, "Nama")];
+
+    const diffs: React.ReactNode[] = [];
+    diffs.push(renderDiff(live.nama, proposed.nama, "Nama Lengkap"));
+    diffs.push(renderDiff((live as any).foto || (live as any).foto_url, proposed.foto_url || proposed.foto, "Foto Profil (URL)"));
+    diffs.push(renderDiff((live as any).email, proposed.email, "Email"));
+    diffs.push(renderDiff((live as any).telepon, proposed.telepon, "No. Telepon"));
+    diffs.push(renderDiff((live as any).pendidikanTerakhir || (live as any).pendidikan_terakhir, proposed.pendidikan_terakhir || proposed.pendidikanTerakhir, "Pendidikan Terakhir"));
+
+    if (req.role === "dosen") {
+      diffs.push(renderDiff((live as any).jabatan, proposed.jabatan, "Jabatan Fungsional"));
+      diffs.push(renderDiff((live as any).pangkat, proposed.pangkat, "Pangkat / Golongan"));
+      diffs.push(renderDiff((live as any).programStudi, proposed.program_studi, "Program Studi"));
+      diffs.push(renderDiff((live as any).bidangKeahlian, proposed.bidangKeahlian || (live as any).bidang_keahlian, "Bidang Keahlian"));
+
+      // Compare Social Media
+      const liveSocial = (live as any).social_media || {};
+      const propSocial = proposed.social_media || {};
+      const platforms = ["google_scholar", "research_gate", "linkedin", "instagram", "facebook"];
+      platforms.forEach(p => {
+        diffs.push(renderDiff(liveSocial[p], propSocial[p], `Sosmed: ${p.replace("_", " ")}`));
+      });
+
+      // Compare Visibility Settings
+      const liveVis = (live as any).visibility_settings || {};
+      const propVis = proposed.visibility_settings || {};
+      const visKeys = ["email", "telepon", ...platforms];
+      visKeys.forEach(k => {
+        const liveVal = liveVis[k] !== false ? "Tampil" : "Sembunyi";
+        const propVal = propVis[k] !== false ? "Tampil" : "Sembunyi";
+        diffs.push(renderDiff(liveVal, propVal, `Privasi: ${k.replace("_", " ")}`));
+      });
+    }
+
+    return diffs.filter(Boolean);
+  };
+
   // Search filter datasets
   const filteredDosen = dosenList.filter(d => 
     d.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (d.nidn && d.nidn.includes(searchQuery)) ||
+    (d.nip && d.nip.includes(searchQuery)) ||
     (d.email && d.email.toLowerCase().includes(searchQuery.toLowerCase()))
   );
   const totalDosenEntries = filteredDosen.length;
@@ -267,6 +453,13 @@ export default function AdminStafPage() {
     pegawaiPage * pegawaiPageSize
   );
 
+  const totalVerifikasiEntries = requests.length;
+  const totalVerifikasiPages = Math.ceil(totalVerifikasiEntries / verifikasiPageSize);
+  const paginatedVerifikasi = requests.slice(
+    (verifikasiPage - 1) * verifikasiPageSize,
+    verifikasiPage * verifikasiPageSize
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -275,13 +468,15 @@ export default function AdminStafPage() {
           <h1 className="text-2xl font-bold text-gray-900">Manajemen Staf</h1>
           <p className="text-gray-500 text-sm">Kelola data dosen dan pegawai/staf administrasi program studi.</p>
         </div>
-        <button
-          onClick={handleOpenAdd}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors shadow-sm cursor-pointer"
-        >
-          <HiOutlinePlus className="w-5 h-5" />
-          Tambah {activeTab === "dosen" ? "Dosen" : "Pegawai"}
-        </button>
+        {activeTab !== "verifikasi" && (
+          <button
+            onClick={handleOpenAdd}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors shadow-sm cursor-pointer"
+          >
+            <HiOutlinePlus className="w-5 h-5" />
+            Tambah {activeTab === "dosen" ? "Dosen" : "Pegawai"}
+          </button>
+        )}
       </div>
 
       {/* Tabs & Search controls */}
@@ -309,166 +504,287 @@ export default function AdminStafPage() {
             <HiOutlineUser className="w-4 h-4" />
             Pegawai {isPegawaiLoaded && `(${pegawaiList.length})`}
           </button>
+          <button
+            onClick={() => { setActiveTab("verifikasi"); setSearchQuery(""); }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer relative ${
+              activeTab === "verifikasi"
+                ? "bg-white text-primary-700 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <HiClock className="w-4 h-4" />
+            Verifikasi Profil
+            {requests.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white leading-none">
+                {requests.length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Search bar */}
-        <div className="relative w-full md:w-80">
-          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400">
-            <HiOutlineMagnifyingGlass className="w-5 h-5" />
-          </span>
-          <input
-            type="text"
-            placeholder={`Cari nama, ${activeTab === "dosen" ? "NIDN" : "NIP"}, atau email...`}
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setDosenPage(1);
-              setPegawaiPage(1);
-            }}
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-        </div>
+        {activeTab !== "verifikasi" && (
+          <div className="relative w-full md:w-80">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400">
+              <HiOutlineMagnifyingGlass className="w-5 h-5" />
+            </span>
+            <input
+              type="text"
+              placeholder={`Cari nama, NIP, atau email...`}
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setDosenPage(1);
+                setPegawaiPage(1);
+              }}
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+        )}
       </div>
 
       {/* Tables depending on active tab */}
-      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+      {activeTab === "verifikasi" ? (
+        <div className="bg-white border border-amber-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-gray-600">
+              <thead className="bg-amber-50 text-amber-800 font-semibold border-b border-amber-100">
+                <tr>
+                  <th className="px-6 py-4">Pemohon</th>
+                  <th className="px-6 py-4">Peran</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4">Diajukan Pada</th>
+                  <th className="px-6 py-4 text-right w-36">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-amber-50">
+                {isVerifikasiLoading ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-8 text-center text-gray-400 animate-pulse font-medium">
+                      Loading data permohonan...
+                    </td>
+                  </tr>
+                ) : paginatedVerifikasi.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
+                      Tidak ada permohonan verifikasi profil pending.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedVerifikasi.map((req) => (
+                    <tr key={req.id} className="hover:bg-amber-50/30 transition-colors">
+                      <td className="px-6 py-3">
+                        <div className="font-semibold text-gray-900">
+                          {req.profiles?.full_name || req.data?.nama || "Tanpa Nama"}
+                        </div>
+                        <div className="text-xs text-gray-400">{req.profiles?.email || "-"}</div>
+                      </td>
+                      <td className="px-6 py-3 text-sm font-medium capitalize text-gray-700">
+                        {req.role === "dosen" ? "Dosen" : "Pegawai / Staf"}
+                      </td>
+                      <td className="px-6 py-3">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          <HiClock className="w-3.5 h-3.5" />
+                          Pending
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 text-xs text-gray-500">
+                        {new Date(req.created_at).toLocaleString("id-ID", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </td>
+                      <td className="px-6 py-3 text-right space-x-1">
+                        <button
+                          onClick={() => {
+                            setSelectedReq(req);
+                            setIsDetailOpen(true);
+                          }}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary-600 hover:bg-primary-50 transition-colors cursor-pointer"
+                          title="Bandingkan"
+                        >
+                          <HiEye className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedReq(req);
+                            handleAction(req.id, "approved");
+                          }}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-green-600 hover:bg-green-50 transition-colors cursor-pointer"
+                          title="Setujui"
+                        >
+                          <HiCheck className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedReq(req);
+                            setRejectReason("");
+                            setIsRejectOpen(true);
+                          }}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                          title="Tolak"
+                        >
+                          <HiXMark className="w-5 h-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <TablePagination
+            currentPage={verifikasiPage}
+            totalPages={totalVerifikasiPages}
+            totalEntries={totalVerifikasiEntries}
+            pageSize={verifikasiPageSize}
+            onPageChange={setVerifikasiPage}
+            onPageSizeChange={(size) => {
+              setVerifikasiPageSize(size);
+              setVerifikasiPage(1);
+            }}
+          />
+        </div>
+      ) : (
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            {activeTab === "dosen" ? (
+              <table className="w-full text-left text-sm text-gray-600">
+                <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-100">
+                  <tr>
+                    <th className="px-6 py-4">Nama Dosen</th>
+                    <th className="px-6 py-4">NIP</th>
+                    <th className="px-6 py-4">Email</th>
+                    <th className="px-6 py-4">Jabatan</th>
+                    <th className="px-6 py-4 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {!isDosenLoaded ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-gray-500 font-medium animate-pulse">
+                        Loading Dosen...
+                      </td>
+                    </tr>
+                  ) : (
+                    <>
+                      {paginatedDosen.map((dosen) => (
+                        <tr key={dosen.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-4 font-medium text-gray-900">
+                            {dosen.nama}
+                          </td>
+                          <td className="px-6 py-4 font-mono text-xs">{dosen.nip || "-"}</td>
+                          <td className="px-6 py-4">{dosen.email || "-"}</td>
+                          <td className="px-6 py-4 text-xs font-medium text-gray-500">{dosen.jabatan || "-"}</td>
+                          <td className="px-6 py-4 text-right space-x-2">
+                            <button
+                              onClick={() => handleOpenEditDosen(dosen)}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary-600 hover:bg-primary-50 transition-colors cursor-pointer"
+                              title="Edit"
+                            >
+                              <HiOutlinePencilSquare className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteOpen(dosen.id)}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                              title="Hapus"
+                            >
+                              <HiOutlineTrash className="w-5 h-5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredDosen.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
+                            {searchQuery ? "Pencarian tidak ditemukan." : "Belum ada data dosen."}
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  )}
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full text-left text-sm text-gray-600">
+                <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-100">
+                  <tr>
+                    <th className="px-6 py-4">Nama Pegawai</th>
+                    <th className="px-6 py-4">NIP</th>
+                    <th className="px-6 py-4">Email</th>
+                    <th className="px-6 py-4">Pendidikan</th>
+                    <th className="px-6 py-4 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {!isPegawaiLoaded ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-gray-500 font-medium animate-pulse">
+                        Loading Pegawai...
+                      </td>
+                    </tr>
+                  ) : (
+                    <>
+                      {paginatedPegawai.map((p) => (
+                        <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-4 font-medium text-gray-900">
+                            {p.nama}
+                          </td>
+                          <td className="px-6 py-4 font-mono text-xs">{p.nip || "-"}</td>
+                          <td className="px-6 py-4">{p.email || "-"}</td>
+                          <td className="px-6 py-4 text-xs text-gray-500">{p.pendidikan_terakhir || "-"}</td>
+                          <td className="px-6 py-4 text-right space-x-2">
+                            <button
+                              onClick={() => handleOpenEditPegawai(p)}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary-600 hover:bg-primary-50 transition-colors cursor-pointer"
+                              title="Edit"
+                            >
+                              <HiOutlinePencilSquare className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteOpen(p.id)}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                              title="Hapus"
+                            >
+                              <HiOutlineTrash className="w-5 h-5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredPegawai.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
+                            {searchQuery ? "Pencarian tidak ditemukan." : "Belum ada data pegawai."}
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
           {activeTab === "dosen" ? (
-            <table className="w-full text-left text-sm text-gray-600">
-              <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-4">Nama Dosen</th>
-                  <th className="px-6 py-4">NIDN</th>
-                  <th className="px-6 py-4">Email</th>
-                  <th className="px-6 py-4">Jabatan</th>
-                  <th className="px-6 py-4 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {!isDosenLoaded ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500 font-medium animate-pulse">
-                      Loading Dosen...
-                    </td>
-                  </tr>
-                ) : (
-                  <>
-                    {paginatedDosen.map((dosen) => (
-                      <tr key={dosen.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-gray-900">
-                          {dosen.nama}
-                        </td>
-                        <td className="px-6 py-4 font-mono text-xs">{dosen.nidn}</td>
-                        <td className="px-6 py-4">{dosen.email || "-"}</td>
-                        <td className="px-6 py-4 text-xs font-medium text-gray-500">{dosen.jabatan || "-"}</td>
-                        <td className="px-6 py-4 text-right space-x-2">
-                          <button
-                            onClick={() => handleOpenEditDosen(dosen)}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary-600 hover:bg-primary-50 transition-colors cursor-pointer"
-                            title="Edit"
-                          >
-                            <HiOutlinePencilSquare className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteOpen(dosen.id)}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                            title="Hapus"
-                          >
-                            <HiOutlineTrash className="w-5 h-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredDosen.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
-                          {searchQuery ? "Pencarian tidak ditemukan." : "Belum ada data dosen."}
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                )}
-              </tbody>
-            </table>
+            <TablePagination
+              currentPage={dosenPage}
+              totalPages={totalDosenPages}
+              totalEntries={totalDosenEntries}
+              pageSize={dosenPageSize}
+              onPageChange={setDosenPage}
+              onPageSizeChange={size => { setDosenPageSize(size); setDosenPage(1); }}
+            />
           ) : (
-            <table className="w-full text-left text-sm text-gray-600">
-              <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-4">Nama Pegawai</th>
-                  <th className="px-6 py-4">NIP</th>
-                  <th className="px-6 py-4">Email</th>
-                  <th className="px-6 py-4">Pendidikan</th>
-                  <th className="px-6 py-4 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {!isPegawaiLoaded ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500 font-medium animate-pulse">
-                      Loading Pegawai...
-                    </td>
-                  </tr>
-                ) : (
-                  <>
-                    {paginatedPegawai.map((p) => (
-                      <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-gray-900">
-                          {p.nama}
-                        </td>
-                        <td className="px-6 py-4 font-mono text-xs">{p.nip || "-"}</td>
-                        <td className="px-6 py-4">{p.email || "-"}</td>
-                        <td className="px-6 py-4 text-xs text-gray-500">{p.pendidikan_terakhir || "-"}</td>
-                        <td className="px-6 py-4 text-right space-x-2">
-                          <button
-                            onClick={() => handleOpenEditPegawai(p)}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary-600 hover:bg-primary-50 transition-colors cursor-pointer"
-                            title="Edit"
-                          >
-                            <HiOutlinePencilSquare className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteOpen(p.id)}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                            title="Hapus"
-                          >
-                            <HiOutlineTrash className="w-5 h-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredPegawai.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
-                          {searchQuery ? "Pencarian tidak ditemukan." : "Belum ada data pegawai."}
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                )}
-              </tbody>
-            </table>
+            <TablePagination
+              currentPage={pegawaiPage}
+              totalPages={totalPegawaiPages}
+              totalEntries={totalPegawaiEntries}
+              pageSize={pegawaiPageSize}
+              onPageChange={setPegawaiPage}
+              onPageSizeChange={size => { setPegawaiPageSize(size); setPegawaiPage(1); }}
+            />
           )}
         </div>
-        {activeTab === "dosen" ? (
-          <TablePagination
-            currentPage={dosenPage}
-            totalPages={totalDosenPages}
-            totalEntries={totalDosenEntries}
-            pageSize={dosenPageSize}
-            onPageChange={setDosenPage}
-            onPageSizeChange={size => { setDosenPageSize(size); setDosenPage(1); }}
-          />
-        ) : (
-          <TablePagination
-            currentPage={pegawaiPage}
-            totalPages={totalPegawaiPages}
-            totalEntries={totalPegawaiEntries}
-            pageSize={pegawaiPageSize}
-            onPageChange={setPegawaiPage}
-            onPageSizeChange={size => { setPegawaiPageSize(size); setPegawaiPage(1); }}
-          />
-        )}
-      </div>
+      )}
 
       {/* Unified Modal */}
       <Modal 
@@ -560,12 +876,12 @@ export default function AdminStafPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">NIDN</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">NIP</label>
                   <input
                     type="text"
                     required
-                    value={dosenForm.nidn || ""}
-                    onChange={(e) => setDosenForm({ ...dosenForm, nidn: maskNidn(e.target.value) })}
+                    value={dosenForm.nip || ""}
+                    onChange={(e) => setDosenForm({ ...dosenForm, nip: maskNip(e.target.value) })}
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-primary-950"
                     placeholder="0024109001"
                   />
@@ -582,6 +898,15 @@ export default function AdminStafPage() {
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950"
                     placeholder="email@polimdo.ac.id"
                   />
+                  <label className="flex items-center gap-1.5 mt-2 select-none">
+                    <input
+                      type="checkbox"
+                      checked={dosenForm.visibility_settings?.email !== false}
+                      onChange={() => toggleDosenVisibility("email")}
+                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
+                    />
+                    <span className="text-xs text-gray-500">Tampilkan email ke publik</span>
+                  </label>
                 </div>
               </div>
 
@@ -595,6 +920,15 @@ export default function AdminStafPage() {
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950"
                     placeholder="0812-3456-7890"
                   />
+                  <label className="flex items-center gap-1.5 mt-2 select-none">
+                    <input
+                      type="checkbox"
+                      checked={dosenForm.visibility_settings?.telepon !== false}
+                      onChange={() => toggleDosenVisibility("telepon")}
+                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
+                    />
+                    <span className="text-xs text-gray-500">Tampilkan telepon ke publik</span>
+                  </label>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Pendidikan Terakhir</label>
@@ -655,6 +989,120 @@ export default function AdminStafPage() {
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950"
                   placeholder="Sistem Tenaga Listrik, Energi Terbarukan"
                 />
+              </div>
+
+              {/* Media Sosial & Akademik */}
+              <div className="pt-4 border-t border-gray-100 space-y-4">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Media Sosial & Akademik</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Google Scholar */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Google Scholar</label>
+                    <input
+                      type="url"
+                      placeholder="https://scholar.google.com/citations?user=..."
+                      value={dosenForm.social_media?.google_scholar || ""}
+                      onChange={(e) => updateDosenSocialMedia("google_scholar", e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950"
+                    />
+                    <label className="flex items-center gap-1.5 mt-1.5 select-none">
+                      <input
+                        type="checkbox"
+                        checked={dosenForm.visibility_settings?.google_scholar !== false}
+                        onChange={() => toggleDosenVisibility("google_scholar")}
+                        className="w-3.5 h-3.5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
+                      />
+                      <span className="text-[10px] text-gray-500">Tampilkan ke publik</span>
+                    </label>
+                  </div>
+
+                  {/* ResearchGate */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">ResearchGate</label>
+                    <input
+                      type="url"
+                      placeholder="https://www.researchgate.net/profile/..."
+                      value={dosenForm.social_media?.research_gate || ""}
+                      onChange={(e) => updateDosenSocialMedia("research_gate", e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950"
+                    />
+                    <label className="flex items-center gap-1.5 mt-1.5 select-none">
+                      <input
+                        type="checkbox"
+                        checked={dosenForm.visibility_settings?.research_gate !== false}
+                        onChange={() => toggleDosenVisibility("research_gate")}
+                        className="w-3.5 h-3.5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
+                      />
+                      <span className="text-[10px] text-gray-500">Tampilkan ke publik</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* LinkedIn */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">LinkedIn</label>
+                    <input
+                      type="url"
+                      placeholder="https://linkedin.com/in/..."
+                      value={dosenForm.social_media?.linkedin || ""}
+                      onChange={(e) => updateDosenSocialMedia("linkedin", e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950"
+                    />
+                    <label className="flex items-center gap-1.5 mt-1.5 select-none">
+                      <input
+                        type="checkbox"
+                        checked={dosenForm.visibility_settings?.linkedin !== false}
+                        onChange={() => toggleDosenVisibility("linkedin")}
+                        className="w-3.5 h-3.5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
+                      />
+                      <span className="text-[10px] text-gray-500">Tampilkan ke publik</span>
+                    </label>
+                  </div>
+
+                  {/* Instagram */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Instagram</label>
+                    <input
+                      type="url"
+                      placeholder="https://instagram.com/..."
+                      value={dosenForm.social_media?.instagram || ""}
+                      onChange={(e) => updateDosenSocialMedia("instagram", e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950"
+                    />
+                    <label className="flex items-center gap-1.5 mt-1.5 select-none">
+                      <input
+                        type="checkbox"
+                        checked={dosenForm.visibility_settings?.instagram !== false}
+                        onChange={() => toggleDosenVisibility("instagram")}
+                        className="w-3.5 h-3.5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
+                      />
+                      <span className="text-[10px] text-gray-500">Tampilkan ke publik</span>
+                    </label>
+                  </div>
+
+                  {/* Facebook */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Facebook</label>
+                    <input
+                      type="url"
+                      placeholder="https://facebook.com/..."
+                      value={dosenForm.social_media?.facebook || ""}
+                      onChange={(e) => updateDosenSocialMedia("facebook", e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950"
+                    />
+                    <label className="flex items-center gap-1.5 mt-1.5 select-none">
+                      <input
+                        type="checkbox"
+                        checked={dosenForm.visibility_settings?.facebook !== false}
+                        onChange={() => toggleDosenVisibility("facebook")}
+                        className="w-3.5 h-3.5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
+                      />
+                      <span className="text-[10px] text-gray-500">Tampilkan ke publik</span>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
@@ -785,6 +1233,126 @@ export default function AdminStafPage() {
         confirmLabel="Hapus"
         variant="danger"
       />
+
+      {/* Detail Comparison Modal */}
+      <Modal
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        title="Bandingkan Perubahan Profil"
+      >
+        {selectedReq && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-amber-50 rounded-xl border border-amber-100 text-amber-800 text-xs font-medium">
+              <div className="flex items-center gap-1.5">
+                <HiOutlineExclamationTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                <span>
+                  Perubahan diajukan oleh <strong className="font-bold">{selectedReq.profiles?.full_name || selectedReq.data?.nama}</strong> ({selectedReq.role})
+                </span>
+              </div>
+            </div>
+
+            <div className="border border-gray-100 rounded-xl overflow-hidden max-h-96 overflow-y-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="bg-gray-50 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-100">
+                  <tr>
+                    <th className="py-2.5 px-4">Nama Kolom</th>
+                    <th className="py-2.5 px-4">Nilai Sekarang</th>
+                    <th className="py-2.5 px-4">Nilai Baru</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getDiffs(selectedReq).length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="py-6 px-4 text-center text-gray-400 font-medium">
+                        Tidak ada perbedaan terdeteksi atau ini adalah data profil baru.
+                      </td>
+                    </tr>
+                  ) : (
+                    getDiffs(selectedReq)
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="pt-4 flex justify-between gap-3 border-t border-gray-100 mt-6">
+              <button
+                type="button"
+                onClick={() => setIsRejectOpen(true)}
+                disabled={actionInProgress}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 border border-red-200 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <HiXMark className="w-5 h-5" />
+                Tolak
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsDetailOpen(false)}
+                  className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+                >
+                  Tutup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAction(selectedReq.id, "approved")}
+                  disabled={actionInProgress}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <HiCheck className="w-5 h-5" />
+                  Setujui & Terapkan
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Reject Reason Modal */}
+      <Modal
+        isOpen={isRejectOpen}
+        onClose={() => setIsRejectOpen(false)}
+        title="Alasan Penolakan Perubahan"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (selectedReq) {
+              handleAction(selectedReq.id, "rejected", rejectReason);
+            }
+          }}
+          className="space-y-4"
+        >
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Alasan Penolakan <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              required
+              rows={4}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950 resize-none"
+              placeholder="Berikan alasan yang jelas mengapa permohonan pembaruan profil ini ditolak..."
+            />
+          </div>
+          <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6">
+            <button
+              type="button"
+              onClick={() => setIsRejectOpen(false)}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={actionInProgress}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              Kirim Penolakan
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -5,6 +5,8 @@ import PageHero from "@/components/universal/PageHero";
 import Modal from "@/components/universal/Modal";
 import { cachedFetch } from "@/lib/fetchCache";
 import LazySection from "@/components/universal/LazySection";
+import { useData } from "@/context/DataContext";
+import Link from "next/link";
 import {
   HiUser,
   HiHome,
@@ -31,7 +33,10 @@ export default function FasilitasPage() {
   const [selectedFasilitas, setSelectedFasilitas] = useState<FasilitasItem | null>(null);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
 
+  const { dosenList, ensureDosenLoaded } = useData();
+
   useEffect(() => {
+    ensureDosenLoaded();
     const fetchFasilitas = async () => {
       try {
         const data = await cachedFetch<FasilitasItem[]>("/api/fasilitas");
@@ -43,7 +48,16 @@ export default function FasilitasPage() {
       }
     };
     fetchFasilitas();
-  }, []);
+  }, [ensureDosenLoaded]);
+
+  const findDosenByName = (name: string | null) => {
+    if (!name) return null;
+    const cleanName = name.split(",")[0].trim().toLowerCase();
+    return dosenList.find((d) => {
+      const cleanDosenName = d.nama.split(",")[0].trim().toLowerCase();
+      return cleanDosenName === cleanName || cleanDosenName.includes(cleanName) || cleanName.includes(cleanDosenName);
+    });
+  };
 
   const filtered = fasilitas.filter((item) => {
     const q = searchQuery.toLowerCase();
@@ -287,7 +301,17 @@ export default function FasilitasPage() {
                 <div>
                   <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Kepala Lab / Ruang</p>
                   <p className="text-sm font-bold text-primary-900 mt-0.5">
-                    {selectedFasilitas.kepala_lab || "—"}
+                    {(() => {
+                      const matched = findDosenByName(selectedFasilitas.kepala_lab);
+                      if (matched) {
+                        return (
+                          <Link href={`/staf/${matched.id}`} className="text-primary-600 hover:underline hover:text-primary-700 transition-colors">
+                            {selectedFasilitas.kepala_lab}
+                          </Link>
+                        );
+                      }
+                      return selectedFasilitas.kepala_lab || "—";
+                    })()}
                   </p>
                 </div>
               </div>
