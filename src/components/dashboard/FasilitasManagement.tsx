@@ -8,6 +8,7 @@ import ConfirmDialog from "@/components/universal/ConfirmDialog";
 import { cachedFetch, invalidateCache } from "@/lib/fetchCache";
 import { useNotification } from "@/context/NotificationContext";
 import { useData } from "@/context/DataContext";
+import ImageLightbox from "@/components/universal/ImageLightbox";
 
 interface FasilitasItem {
   id: string;
@@ -25,6 +26,9 @@ export default function FasilitasManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const { dosenList, ensureDosenLoaded } = useData();
 
@@ -242,7 +246,16 @@ export default function FasilitasManagement() {
                 <img
                   src={item.foto_urls?.[0] || "/images/default.svg"}
                   alt={item.nama}
-                  className="w-full h-full object-cover"
+                  onClick={() => {
+                    if (item.foto_urls && item.foto_urls.length > 0) {
+                      setLightboxImages(item.foto_urls);
+                      setLightboxIndex(0);
+                      setLightboxOpen(true);
+                    }
+                  }}
+                  className={`w-full h-full object-cover ${
+                    item.foto_urls && item.foto_urls.length > 0 ? "cursor-zoom-in hover:scale-105 transition-transform duration-500" : ""
+                  }`}
                 />
                 <div className="absolute top-3 left-3 px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-bold font-mono">
                   Room: {item.no_ruangan || "-"}
@@ -440,6 +453,13 @@ export default function FasilitasManagement() {
         message="Hapus fasilitas laboratorium ini? Tindakan ini tidak dapat dibatalkan."
         confirmLabel="Hapus"
         variant="danger"
+      />
+
+      <ImageLightbox
+        isOpen={lightboxOpen}
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        onClose={() => setLightboxOpen(false)}
       />
     </div>
   );

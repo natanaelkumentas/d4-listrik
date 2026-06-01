@@ -7,6 +7,7 @@ import { cachedFetch } from "@/lib/fetchCache";
 import LazySection from "@/components/universal/LazySection";
 import { useData } from "@/context/DataContext";
 import Link from "next/link";
+import ImageLightbox from "@/components/universal/ImageLightbox";
 import {
   HiUser,
   HiHome,
@@ -32,6 +33,9 @@ export default function FasilitasPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFasilitas, setSelectedFasilitas] = useState<FasilitasItem | null>(null);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const { dosenList, ensureDosenLoaded } = useData();
 
@@ -228,12 +232,19 @@ export default function FasilitasPage() {
         {selectedFasilitas && (
           <div className="space-y-6">
             {/* Image Slider */}
-            <div className="relative h-64 sm:h-80 w-full bg-gray-100 rounded-2xl overflow-hidden group/slider">
-              <img
-                src={selectedPhotos[currentPhotoIndex]}
-                alt={selectedFasilitas.nama}
-                className="w-full h-full object-cover"
-              />
+             <div 
+               onClick={() => {
+                 setLightboxImages(selectedPhotos);
+                 setLightboxIndex(currentPhotoIndex);
+                 setLightboxOpen(true);
+               }}
+               className="relative h-64 sm:h-80 w-full bg-gray-100 rounded-2xl overflow-hidden group/slider cursor-zoom-in"
+             >
+               <img
+                 src={selectedPhotos[currentPhotoIndex]}
+                 alt={selectedFasilitas.nama}
+                 className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-550"
+               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
 
               {/* Navigation arrows */}
@@ -327,6 +338,13 @@ export default function FasilitasPage() {
           </div>
         )}
       </Modal>
+
+      <ImageLightbox
+        isOpen={lightboxOpen}
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        onClose={() => setLightboxOpen(false)}
+      />
     </>
   );
 }

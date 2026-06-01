@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { HiBriefcase, HiTag, HiEnvelope, HiPhone, HiDocumentText, HiBookOpen } from "react-icons/hi2";
 import { SiGooglescholar, SiResearchgate } from "react-icons/si";
 import { FaLinkedin, FaInstagram, FaFacebook } from "react-icons/fa";
+import ImageLightbox from "../universal/ImageLightbox";
 
 const avatarColors = [
   "from-blue-500 to-indigo-600",
@@ -24,6 +25,8 @@ export default function DosenProfile({ dosen, index }: { dosen: Dosen; index: nu
   const color = avatarColors[index % avatarColors.length];
   const totalKarya = getTotalKarya(dosen);
   const [prodiName, setProdiName] = useState("D4 Teknik Listrik");
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [backLabel, setBackLabel] = useState("Kembali ke Daftar Staf");
 
   useEffect(() => {
     const getProdiName = async () => {
@@ -37,6 +40,19 @@ export default function DosenProfile({ dosen, index }: { dosen: Dosen; index: nu
       }
     };
     getProdiName();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && document.referrer) {
+      const referrer = document.referrer;
+      if (referrer.includes("/dashboard")) {
+        setBackLabel("Kembali ke Dashboard");
+      } else if (referrer.includes("/galeri")) {
+        setBackLabel("Kembali ke Galeri");
+      } else if (referrer.includes("/fasilitas")) {
+        setBackLabel("Kembali ke Fasilitas");
+      }
+    }
   }, []);
 
   const isHomebase = (dosen.programStudi || "").trim().toLowerCase() === prodiName.trim().toLowerCase();
@@ -57,7 +73,7 @@ export default function DosenProfile({ dosen, index }: { dosen: Dosen; index: nu
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
-        Kembali ke Daftar Staf
+        {backLabel}
       </button>
 
 
@@ -72,7 +88,14 @@ export default function DosenProfile({ dosen, index }: { dosen: Dosen; index: nu
             <img
               src={dosen.foto || "/images/default-profile.svg"}
               alt={dosen.nama}
-              className="flex-shrink-0 w-24 h-24 rounded-2xl object-cover shadow-xl"
+              onClick={() => {
+                if (dosen.foto) {
+                  setLightboxOpen(true);
+                }
+              }}
+              className={`flex-shrink-0 w-24 h-24 rounded-2xl object-cover shadow-xl ${
+                dosen.foto ? "cursor-zoom-in hover:scale-102 transition-transform duration-300" : ""
+              }`}
             />
 
             {/* Info */}
@@ -223,6 +246,15 @@ export default function DosenProfile({ dosen, index }: { dosen: Dosen; index: nu
           </h2>
           <KaryaTabs dosen={dosen} />
         </div>
+      )}
+
+      {dosen.foto && (
+        <ImageLightbox
+          isOpen={lightboxOpen}
+          images={[dosen.foto]}
+          initialIndex={0}
+          onClose={() => setLightboxOpen(false)}
+        />
       )}
     </div>
   );

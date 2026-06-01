@@ -15,6 +15,7 @@ import {
   HiOutlineUserGroup,
   HiOutlineMapPin
 } from "react-icons/hi2";
+import ImageLightbox from "@/components/universal/ImageLightbox";
 import { GaleriItem } from "@/types/galeri";
 import { cachedFetch } from "@/lib/fetchCache";
 
@@ -79,6 +80,10 @@ export default function GaleriDetailPage() {
   const id = params.id as string;
   const { dosenList, ensureDosenLoaded } = useData();
   
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
   const [karyaItem, setKaryaItem] = useState<GaleriItem | null>(null);
   const [originalKarya, setOriginalKarya] = useState<any | null>(null);
   const [isKaryaLoading, setIsKaryaLoading] = useState(false);
@@ -90,6 +95,22 @@ export default function GaleriDetailPage() {
   const [fasilitasItem, setFasilitasItem] = useState<GaleriItem | null>(null);
   const [originalFasilitas, setOriginalFasilitas] = useState<any | null>(null);
   const [isFasilitasLoading, setIsFasilitasLoading] = useState(false);
+  const [backLabel, setBackLabel] = useState("Kembali ke Galeri");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && document.referrer) {
+      const referrer = document.referrer;
+      if (referrer.includes("/dashboard")) {
+        setBackLabel("Kembali ke Dashboard");
+      } else if (referrer.includes("/staf/")) {
+        setBackLabel("Kembali ke Profil Staf");
+      } else if (referrer.includes("/staf")) {
+        setBackLabel("Kembali ke Daftar Staf");
+      } else if (referrer.includes("/fasilitas")) {
+        setBackLabel("Kembali ke Fasilitas");
+      }
+    }
+  }, []);
 
   useEffect(() => {
     ensureDosenLoaded();
@@ -441,7 +462,7 @@ export default function GaleriDetailPage() {
               className="inline-flex items-center gap-2 text-sm text-white/90 hover:text-white font-medium mb-6 transition-colors drop-shadow-md cursor-pointer bg-transparent border-0"
             >
               <HiArrowLeft className="w-4 h-4" />
-              Kembali ke Galeri
+              {backLabel}
             </button>
 
             <div className="bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden">
@@ -534,25 +555,50 @@ export default function GaleriDetailPage() {
                       {originalKarya.metadata?.sampul_depan && (
                         <div className="flex flex-col items-center">
                           <span className="text-xs font-semibold text-gray-500 mb-2">Sampul Depan</span>
-                          <div className="relative w-40 h-56 sm:w-48 sm:h-64 rounded-xl overflow-hidden shadow-md border border-gray-200 bg-gray-50">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const covers = [
+                                originalKarya.metadata.sampul_depan,
+                                originalKarya.metadata.sampul_belakang
+                              ].filter(Boolean) as string[];
+                              setLightboxImages(covers);
+                              setLightboxIndex(0);
+                              setLightboxOpen(true);
+                            }}
+                            className="relative w-40 h-56 sm:w-48 sm:h-64 rounded-xl overflow-hidden shadow-md border border-gray-200 bg-gray-50 cursor-zoom-in group/cover"
+                          >
                             <img
                               src={originalKarya.metadata.sampul_depan as string}
                               alt="Sampul Depan"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover group-hover/cover:scale-105 transition-transform duration-300"
                             />
-                          </div>
+                          </button>
                         </div>
                       )}
                       {originalKarya.metadata?.sampul_belakang && (
                         <div className="flex flex-col items-center">
                           <span className="text-xs font-semibold text-gray-500 mb-2">Sampul Belakang</span>
-                          <div className="relative w-40 h-56 sm:w-48 sm:h-64 rounded-xl overflow-hidden shadow-md border border-gray-200 bg-gray-50">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const covers = [
+                                originalKarya.metadata.sampul_depan,
+                                originalKarya.metadata.sampul_belakang
+                              ].filter(Boolean) as string[];
+                              setLightboxImages(covers);
+                              // Index is 1 if both exist, else 0
+                              setLightboxIndex(originalKarya.metadata.sampul_depan ? 1 : 0);
+                              setLightboxOpen(true);
+                            }}
+                            className="relative w-40 h-56 sm:w-48 sm:h-64 rounded-xl overflow-hidden shadow-md border border-gray-200 bg-gray-50 cursor-zoom-in group/cover"
+                          >
                             <img
                               src={originalKarya.metadata.sampul_belakang as string}
                               alt="Sampul Belakang"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover group-hover/cover:scale-105 transition-transform duration-300"
                             />
-                          </div>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -572,13 +618,21 @@ export default function GaleriDetailPage() {
                 ) : (
                   <div className={`grid gap-6 ${item.foto.length === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
                     {item.foto.map((url, idx) => (
-                      <div key={idx} className="relative rounded-2xl overflow-hidden shadow-sm border border-gray-100 group">
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setLightboxImages(item.foto || []);
+                          setLightboxIndex(idx);
+                          setLightboxOpen(true);
+                        }}
+                        className="relative rounded-2xl overflow-hidden shadow-sm border border-gray-100 group cursor-zoom-in text-left focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                      >
                         <img
                           src={url}
                           alt={`${item.judul} - Foto ${idx + 1}`}
                           className="w-full h-auto object-cover aspect-video group-hover:scale-105 transition-transform duration-500"
                         />
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -587,6 +641,13 @@ export default function GaleriDetailPage() {
           </div>
         </div>
       </section>
+
+      <ImageLightbox
+        isOpen={lightboxOpen}
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        onClose={() => setLightboxOpen(false)}
+      />
     </>
   );
 }
