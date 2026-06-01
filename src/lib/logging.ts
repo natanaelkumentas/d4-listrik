@@ -4,10 +4,17 @@ import { NextRequest } from "next/server";
 
 export function getClientIp(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-for");
+  let ip = "127.0.0.1";
   if (forwarded) {
-    return forwarded.split(",")[0].trim();
+    ip = forwarded.split(",")[0].trim();
+  } else {
+    ip = request.headers.get("x-real-ip") || "127.0.0.1";
   }
-  return request.headers.get("x-real-ip") || "127.0.0.1";
+
+  if (ip === "::1" || ip === "127.0.0.1") {
+    return "localhost";
+  }
+  return ip;
 }
 
 export async function createLog(params: {
