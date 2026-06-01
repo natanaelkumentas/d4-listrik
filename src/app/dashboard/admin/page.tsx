@@ -1,6 +1,6 @@
 "use client";
 
-import { HiOutlineUserGroup, HiOutlinePhoto, HiOutlineAcademicCap, HiOutlineBookOpen, HiOutlineTrophy, HiOutlineChartBarSquare, HiOutlineClock, HiOutlineFunnel } from "react-icons/hi2";
+import { HiOutlineUserGroup, HiOutlinePhoto, HiOutlineAcademicCap, HiOutlineBookOpen, HiOutlineTrophy, HiOutlineChartBarSquare, HiOutlineClock, HiOutlineFunnel, HiOutlineTrash, HiOutlineExclamationTriangle } from "react-icons/hi2";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -86,6 +86,18 @@ export default function AdminDashboardPage() {
   // Export setting states
   const [exportFormat, setExportFormat] = useState<"json" | "csv">("csv");
   const [exportFilename, setExportFilename] = useState("");
+
+  // Clear logs states
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const [clearStartDate, setClearStartDate] = useState("");
+  const [clearEndDate, setClearEndDate] = useState("");
+  const [clearKategori, setClearKategori] = useState("");
+  const [clearAksi, setClearAksi] = useState("");
+  const [clearPengguna, setClearPengguna] = useState("");
+  const [clearIp, setClearIp] = useState("");
+  const [clearPreviewCount, setClearPreviewCount] = useState(0);
+  const [isClearLoading, setIsClearLoading] = useState(false);
 
   // Debounced input for User search (retained directly on page)
   const [debouncedUser, setDebouncedUser] = useState("");
@@ -252,6 +264,93 @@ export default function AdminDashboardPage() {
     } catch (e) {
       console.error(e);
       showError("Terjadi kesalahan saat memproses ekspor.");
+    }
+  };
+
+  // Build clear logs filter URL params
+  const buildClearParams = () => {
+    const params = new URLSearchParams();
+    if (clearKategori) params.set("kategori", clearKategori);
+    if (clearAksi) params.set("aksi", clearAksi);
+    if (clearPengguna) params.set("pengguna", clearPengguna);
+    if (clearIp) params.set("ip_address", clearIp);
+    if (clearStartDate) params.set("startDate", clearStartDate);
+    if (clearEndDate) params.set("endDate", clearEndDate);
+    return params.toString();
+  };
+
+  // Get a human-readable description of which filters are active
+  const getClearFilterDescription = () => {
+    const parts: string[] = [];
+    if (clearStartDate || clearEndDate) {
+      const from = clearStartDate || "awal";
+      const to = clearEndDate || "sekarang";
+      parts.push(`Rentang Waktu: ${from} s/d ${to}`);
+    }
+    if (clearKategori) parts.push(`Kategori: ${clearKategori}`);
+    if (clearAksi) parts.push(`Aksi: ${clearAksi.toUpperCase()}`);
+    if (clearPengguna) parts.push(`Pengguna: ${clearPengguna}`);
+    if (clearIp) parts.push(`IP Address: ${clearIp}`);
+    return parts.length > 0 ? parts : ["Semua log (tanpa filter)"];
+  };
+
+  // Estimate database storage freed
+  const getEstimatedDbSize = (rowCount: number) => {
+    const avgBytesPerRow = 550; // avg row size in Supabase for this table
+    const totalBytes = rowCount * avgBytesPerRow;
+    if (totalBytes < 1024) return `${totalBytes} B`;
+    if (totalBytes < 1024 * 1024) return `${(totalBytes / 1024).toFixed(1)} KB`;
+    return `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  // Open clear modal with reset filters
+  const openClearModal = () => {
+    setClearStartDate("");
+    setClearEndDate("");
+    setClearKategori("");
+    setClearAksi("");
+    setClearPengguna("");
+    setClearIp("");
+    setIsClearModalOpen(true);
+  };
+
+  // Preview the count of logs that would be deleted, then show confirmation
+  const previewClearLogs = async () => {
+    setIsClearLoading(true);
+    try {
+      const params = buildClearParams();
+      const res = await fetch(`/api/logs?preview=true${params ? `&${params}` : ""}`, { method: "DELETE" });
+      if (res.ok) {
+        const result = await res.json();
+        setClearPreviewCount(result.count || 0);
+        setIsClearModalOpen(false);
+        setIsClearConfirmOpen(true);
+      } else {
+        showError("Gagal memeriksa jumlah log.");
+      }
+    } catch {
+      showError("Terjadi kesalahan jaringan.");
+    } finally {
+      setIsClearLoading(false);
+    }
+  };
+
+  // Execute the clear
+  const executeClearLogs = async () => {
+    setIsClearLoading(true);
+    try {
+      const params = buildClearParams();
+      const res = await fetch(`/api/logs?${params}`, { method: "DELETE" });
+      if (res.ok) {
+        setIsClearConfirmOpen(false);
+        fetchLogs(); // refresh table
+      } else {
+        showError("Gagal menghapus log audit.");
+      }
+    } catch {
+      showError("Terjadi kesalahan jaringan.");
+    } finally {
+      setIsClearLoading(false);
     }
   };
 
@@ -430,6 +529,14 @@ export default function AdminDashboardPage() {
               className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 transition-colors shadow-sm flex items-center gap-2"
             >
               Ekspor
+            </button>
+
+            <button
+              onClick={openClearModal}
+              className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-colors shadow-sm flex items-center gap-2"
+            >
+              <HiOutlineTrash className="w-4 h-4" />
+              Bersihkan
             </button>
           </div>
         </div>
@@ -775,6 +882,203 @@ export default function AdminDashboardPage() {
                 className="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-primary-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-primary-700 transition-colors shadow-sm"
               >
                 Lanjutkan
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Clear Logs Settings Modal */}
+      {isClearModalOpen && mounted && createPortal(
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 p-3 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[calc(100vh-2rem)] p-4 sm:p-6 shadow-xl border border-gray-100 flex flex-col gap-3 sm:gap-4 animate-in fade-in zoom-in duration-200 overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-gray-100 pb-3 flex-shrink-0">
+              <HiOutlineTrash className="w-5 h-5 text-red-600" />
+              <h3 className="text-base sm:text-lg font-bold text-gray-900">Bersihkan Log Audit</h3>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 flex flex-col gap-3 sm:gap-4 py-1 min-h-0">
+              <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">
+                Tentukan kriteria log audit yang ingin Anda hapus secara permanen untuk mengoptimalkan penyimpanan database.
+              </p>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Pengguna (Nama / Email)</label>
+                <input
+                  type="text"
+                  value={clearPengguna}
+                  onChange={(e) => setClearPengguna(e.target.value)}
+                  placeholder="Filter pengguna tertentu..."
+                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">IP Address</label>
+                <input
+                  type="text"
+                  value={clearIp}
+                  onChange={(e) => setClearIp(e.target.value)}
+                  placeholder="Filter IP address tertentu..."
+                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">Kategori</label>
+                  <select
+                    value={clearKategori}
+                    onChange={(e) => setClearKategori(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950 font-medium"
+                  >
+                    <option value="">Semua Kategori</option>
+                    <option value="dosen">Dosen</option>
+                    <option value="pegawai">Pegawai</option>
+                    <option value="profile_verification">Verifikasi Profil</option>
+                    <option value="sambutan">Sambutan</option>
+                    <option value="kurikulum">Kurikulum</option>
+                    <option value="karya">Karya</option>
+                    <option value="fasilitas">Fasilitas</option>
+                    <option value="kegiatan">Kegiatan</option>
+                    <option value="config">Konfigurasi Website</option>
+                    <option value="auth">Autentikasi (Login/Logout)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">Aksi</label>
+                  <select
+                    value={clearAksi}
+                    onChange={(e) => setClearAksi(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950 font-medium"
+                  >
+                    <option value="">Semua Aksi</option>
+                    <option value="create">CREATE</option>
+                    <option value="update">UPDATE</option>
+                    <option value="delete">DELETE</option>
+                    <option value="approve">APPROVE</option>
+                    <option value="reject">REJECT</option>
+                    <option value="login">LOGIN</option>
+                    <option value="logout">LOGOUT</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">Mulai Tanggal</label>
+                  <input
+                    type="date"
+                    value={clearStartDate}
+                    onChange={(e) => setClearStartDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">Sampai Tanggal</label>
+                  <input
+                    type="date"
+                    value={clearEndDate}
+                    onChange={(e) => setClearEndDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-primary-950 font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-gray-100 pt-3 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setClearStartDate("");
+                  setClearEndDate("");
+                  setClearKategori("");
+                  setClearAksi("");
+                  setClearPengguna("");
+                  setClearIp("");
+                }}
+                className="text-xs font-bold text-red-650 hover:text-red-800 transition-colors uppercase"
+              >
+                Reset
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsClearModalOpen(false)}
+                  className="px-3.5 py-1.5 sm:px-4 sm:py-2 border border-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-50 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={isClearLoading}
+                  onClick={previewClearLogs}
+                  className="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-red-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {isClearLoading ? "Memeriksa..." : "Bersihkan"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Clear Logs Execution Confirmation Dialog */}
+      {isClearConfirmOpen && mounted && createPortal(
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 p-3 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-sm w-full max-h-[calc(100vh-2rem)] p-4 sm:p-6 shadow-xl border border-gray-100 flex flex-col gap-3 sm:gap-4 animate-in fade-in zoom-in duration-200 overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-gray-100 pb-3 flex-shrink-0">
+              <HiOutlineExclamationTriangle className="w-5 h-5 text-red-600" />
+              <h3 className="text-base sm:text-lg font-bold text-gray-900">Konfirmasi Penghapusan</h3>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 flex flex-col gap-3 min-h-0">
+              <p className="text-xs sm:text-sm text-gray-650 leading-relaxed font-semibold">
+                Apakah Anda yakin ingin menghapus log audit berikut secara permanen? Tindakan ini tidak dapat dibatalkan.
+              </p>
+
+              <div className="bg-red-50 rounded-2xl p-4 border border-red-100 flex flex-col gap-2.5 text-[11px] sm:text-xs">
+                <div className="flex justify-between items-center pb-2 border-b border-red-200/50">
+                  <span className="text-red-700 font-bold">Log yang Akan Dihapus:</span>
+                  <span className="font-extrabold text-red-950 text-sm">{clearPreviewCount} baris</span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-red-200/50">
+                  <span className="text-red-700 font-bold">Estimasi Ruang Bebas:</span>
+                  <span className="font-extrabold text-green-700 text-sm">~{getEstimatedDbSize(clearPreviewCount)}</span>
+                </div>
+                <div>
+                  <span className="text-red-700 font-bold block mb-1.5">Kriteria Filter yang Diterapkan:</span>
+                  <ul className="list-disc list-inside space-y-1 text-red-955/80 font-medium">
+                    {getClearFilterDescription().map((desc, idx) => (
+                      <li key={idx} className="break-all">{desc}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-gray-100 pt-3 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsClearConfirmOpen(false);
+                  setIsClearModalOpen(true);
+                }}
+                className="px-3.5 py-1.5 sm:px-4 sm:py-2 border border-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-50 transition-colors"
+              >
+                Kembali
+              </button>
+              <button
+                type="button"
+                disabled={isClearLoading || clearPreviewCount === 0}
+                onClick={executeClearLogs}
+                className="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-red-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {isClearLoading ? "Menghapus..." : "Ya, Hapus Permanen"}
               </button>
             </div>
           </div>
