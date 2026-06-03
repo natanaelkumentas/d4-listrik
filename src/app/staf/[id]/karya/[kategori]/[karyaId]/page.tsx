@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useData } from "@/context/DataContext";
 import { notFound, useParams, useRouter } from "next/navigation";
+import { getBackInfo, navigateBack } from "@/lib/backLabel";
 import Link from "next/link";
 import { KaryaCategory, karyaCategoryLabels, KaryaItem, PersonLink, Publikasi, Penelitian, Pengabdian, BukuAjar, Hki, Sertifikasi } from "@/types/dosen";
 import { HiArrowLeft, HiOutlineCalendar, HiOutlineDocumentText, HiOutlineLink, HiOutlineBuildingOffice, HiOutlineIdentification, HiOutlineBookOpen, HiOutlineUserGroup } from "react-icons/hi2";
@@ -61,26 +62,14 @@ export default function KaryaDetailPage() {
 
   const dosen = dosenList.find((d) => d.id === id);
 
-  const [backLabel, setBackLabel] = useState("");
+  const [backInfo, setBackInfo] = useState({
+    label: "Kembali ke Profil Staf",
+    href: `/staf/${id}`,
+  });
 
   useEffect(() => {
-    if (!dosen) return;
-    
-    let label = `Kembali ke Profil ${dosen.nama}`;
-    if (typeof window !== "undefined" && document.referrer) {
-      const referrer = document.referrer;
-      if (referrer.includes("/dashboard")) {
-        label = "Kembali ke Dashboard";
-      } else if (referrer.includes("/staf") && !referrer.includes("/staf/")) {
-        label = "Kembali ke Daftar Staf";
-      } else if (referrer.includes("/galeri")) {
-        label = "Kembali ke Galeri";
-      } else if (referrer.includes("/fasilitas")) {
-        label = "Kembali ke Fasilitas";
-      }
-    }
-    setBackLabel(label);
-  }, [dosen]);
+    setBackInfo(getBackInfo({ label: "Kembali ke Profil Staf", href: `/staf/${id}` }));
+  }, [id]);
 
   if (!dosen) return (
     <div className="min-h-[50vh] flex flex-col items-center justify-center">
@@ -351,17 +340,11 @@ export default function KaryaDetailPage() {
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="animate-fade-in-up">
             <button
-              onClick={() => {
-                if (window.history.length > 1) {
-                  router.back();
-                } else {
-                  router.push(`/staf/${id}`);
-                }
-              }}
+              onClick={() => navigateBack(router, backInfo.href)}
               className="inline-flex items-center gap-2 text-sm text-white/90 hover:text-white font-medium mb-6 transition-colors drop-shadow-md cursor-pointer bg-transparent border-0"
             >
               <HiArrowLeft className="w-4 h-4" />
-              {backLabel}
+              {backInfo.label}
             </button>
 
             <div className="bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden">

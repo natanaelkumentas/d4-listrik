@@ -39,6 +39,7 @@ export default function FasilitasManagement() {
 
   // Modal editor states
   const [isOpen, setIsOpen] = useState(false);
+  const [isLab, setIsLab] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     nama: "",
@@ -84,6 +85,7 @@ export default function FasilitasManagement() {
   const handleOpenAdd = () => {
     setEditingId(null);
     setDosenSearch("");
+    setIsLab(true);
     setForm({
       nama: "",
       deskripsi: "",
@@ -97,6 +99,7 @@ export default function FasilitasManagement() {
   const handleOpenEdit = (item: FasilitasItem) => {
     setEditingId(item.id);
     setDosenSearch(item.kepala_lab || "");
+    setIsLab(!!item.kepala_lab);
     setForm({
       nama: item.nama,
       deskripsi: item.deskripsi || "",
@@ -160,10 +163,15 @@ export default function FasilitasManagement() {
       const url = editingId ? `/api/fasilitas/${editingId}` : "/api/fasilitas";
       const method = editingId ? "PUT" : "POST";
 
+      const payload = {
+        ...form,
+        kepala_lab: isLab ? form.kepala_lab : null,
+      };
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -264,7 +272,11 @@ export default function FasilitasManagement() {
 
               <div className="p-5">
                 <h3 className="font-bold text-primary-950 text-base mb-1.5">{item.nama}</h3>
-                <p className="text-xs text-gray-400 mb-3 font-semibold">Ka. Lab: {item.kepala_lab || "-"}</p>
+                {item.kepala_lab ? (
+                  <p className="text-xs text-gray-400 mb-3 font-semibold">Ka. Lab: {item.kepala_lab}</p>
+                ) : (
+                  <p className="text-xs text-gray-400 mb-3 font-semibold">Tipe: Non-Laboratorium</p>
+                )}
                 <p className="text-sm text-gray-500 line-clamp-3 leading-relaxed">{item.deskripsi || "—"}</p>
               </div>
             </div>
@@ -323,51 +335,83 @@ export default function FasilitasManagement() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative" ref={dropdownRef}>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Kepala Laboratorium</label>
-              <input
-                type="text"
-                value={dosenSearch}
-                onFocus={() => setIsDosenDropdownOpen(true)}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setDosenSearch(val);
-                  setForm({ ...form, kepala_lab: val });
-                }}
-                className={inputCls}
-                placeholder="Cari & pilih dosen, atau ketik langsung..."
-              />
-              {isDosenDropdownOpen && (
-                <div className="absolute z-[110] left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto custom-scrollbar">
-                  {dosenList.filter((d) =>
-                    d.nama.toLowerCase().includes(dosenSearch.toLowerCase())
-                  ).length > 0 ? (
-                    dosenList
-                      .filter((d) =>
-                        d.nama.toLowerCase().includes(dosenSearch.toLowerCase())
-                      )
-                      .map((d) => (
-                        <button
-                          key={d.id}
-                          type="button"
-                          onClick={() => {
-                            setForm({ ...form, kepala_lab: d.nama });
-                            setDosenSearch(d.nama);
-                            setIsDosenDropdownOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-2.5 hover:bg-primary-50 text-sm text-primary-950 font-medium transition-colors border-b border-gray-50 last:border-b-0 cursor-pointer"
-                        >
-                          {d.nama}
-                        </button>
-                      ))
-                  ) : (
-                    <div className="px-4 py-3 text-xs text-gray-400 italic">
-                      Tidak ada dosen yang cocok. Tekan Enter/Ketik untuk input manual.
-                    </div>
-                  )}
-                </div>
-              )}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Tipe Fasilitas</label>
+              <div className="flex gap-4 mt-2">
+                <label className="flex items-center gap-2 text-sm text-gray-700 font-medium cursor-pointer">
+                  <input
+                    type="radio"
+                    name="tipe_fasilitas"
+                    checked={isLab}
+                    onChange={() => setIsLab(true)}
+                    className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                  />
+                  Laboratorium (Lab)
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 font-medium cursor-pointer">
+                  <input
+                    type="radio"
+                    name="tipe_fasilitas"
+                    checked={!isLab}
+                    onChange={() => {
+                      setIsLab(false);
+                      setForm(prev => ({ ...prev, kepala_lab: "" }));
+                      setDosenSearch("");
+                    }}
+                    className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                  />
+                  Non-Laboratorium
+                </label>
+              </div>
             </div>
+
+            {isLab && (
+              <div className="relative" ref={dropdownRef}>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Kepala Laboratorium</label>
+                <input
+                  type="text"
+                  value={dosenSearch}
+                  onFocus={() => setIsDosenDropdownOpen(true)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setDosenSearch(val);
+                    setForm({ ...form, kepala_lab: val });
+                  }}
+                  className={inputCls}
+                  placeholder="Cari & pilih dosen, atau ketik langsung..."
+                />
+                {isDosenDropdownOpen && (
+                  <div className="absolute z-[110] left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto custom-scrollbar">
+                    {dosenList.filter((d) =>
+                      d.nama.toLowerCase().includes(dosenSearch.toLowerCase())
+                    ).length > 0 ? (
+                      dosenList
+                        .filter((d) =>
+                          d.nama.toLowerCase().includes(dosenSearch.toLowerCase())
+                        )
+                        .map((d) => (
+                          <button
+                            key={d.id}
+                            type="button"
+                            onClick={() => {
+                              setForm({ ...form, kepala_lab: d.nama });
+                              setDosenSearch(d.nama);
+                              setIsDosenDropdownOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 hover:bg-primary-50 text-sm text-primary-950 font-medium transition-colors border-b border-gray-50 last:border-b-0 cursor-pointer"
+                          >
+                            {d.nama}
+                          </button>
+                        ))
+                    ) : (
+                      <div className="px-4 py-3 text-xs text-gray-400 italic">
+                        Tidak ada dosen yang cocok. Tekan Enter/Ketik untuk input manual.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div>

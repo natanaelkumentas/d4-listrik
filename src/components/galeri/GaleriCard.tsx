@@ -43,10 +43,12 @@ export default function GaleriCard({
         </span>
 
         {/* Date badge on image */}
-        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-xs text-white/90 font-medium">
-          <HiOutlineCalendar className="w-4 h-4" />
-          {formattedDate}
-        </div>
+        {item.kategori !== "fasilitas" && (
+          <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-xs text-white/90 font-medium">
+            <HiOutlineCalendar className="w-4 h-4" />
+            {item.kategori === "tridharma" ? dateObj.getFullYear() : formattedDate}
+          </div>
+        )}
       </div>
 
       <div className="p-5">

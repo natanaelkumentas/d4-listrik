@@ -44,17 +44,25 @@ export default function GaleriPage() {
         // Transform Karya items
         const tridharmaJenis = ["publikasi", "penelitian", "pengabdian", "bukuAjar"];
         const virtualKarya: GaleriItem[] = (karyaList || [])
-          .filter((k) => tridharmaJenis.includes(k.jenis) && k.foto_urls && k.foto_urls.length > 0)
-          .map((k) => ({
-            id: `karya-${k.id}`,
-            judul: k.judul,
-            deskripsi: k.deskripsi || "",
-            tanggal: `${k.tahun}-01-01`,
-            kategori: "tridharma" as const,
-            foto: k.foto_urls || [],
-            warna: jenisGradients[k.jenis] || "from-blue-500 to-indigo-600",
-            subLabel: jenisLabels[k.jenis] || k.jenis,
-          }));
+          .filter((k) => tridharmaJenis.includes(k.jenis))
+          .map((k) => {
+            let photos = k.jenis === "bukuAjar"
+              ? [k.metadata?.sampul_depan].filter(Boolean)
+              : (k.foto_urls || []);
+            if (photos.length === 0) {
+              photos = ["/images/default.svg"];
+            }
+            return {
+              id: `karya-${k.id}`,
+              judul: k.judul,
+              deskripsi: k.deskripsi || "",
+              tanggal: `${k.tahun}-01-01`,
+              kategori: "tridharma" as const,
+              foto: photos,
+              warna: jenisGradients[k.jenis] || "from-blue-500 to-indigo-600",
+              subLabel: jenisLabels[k.jenis] || k.jenis,
+            };
+          });
 
         // Transform Fasilitas items
         const virtualFasilitas: GaleriItem[] = (fasList || []).map((f) => {
@@ -76,17 +84,19 @@ export default function GaleriPage() {
 
         // Transform Kegiatan items
         const virtualKegiatan: GaleriItem[] = (kegiatanList || [])
-          .filter((k) => k.foto_urls && k.foto_urls.length > 0)
-          .map((k) => ({
-            id: `kegiatan-${k.id}`,
-            judul: k.nama,
-            deskripsi: k.deskripsi || "",
-            tanggal: k.tanggal,
-            kategori: "kegiatan" as const,
-            foto: k.foto_urls || [],
-            warna: "from-primary-700 to-primary-900",
-            subLabel: k.kategori,
-          }));
+          .map((k) => {
+            const photos = k.foto_urls && k.foto_urls.length > 0 ? k.foto_urls : ["/images/default.svg"];
+            return {
+              id: `kegiatan-${k.id}`,
+              judul: k.nama,
+              deskripsi: k.deskripsi || "",
+              tanggal: k.tanggal,
+              kategori: "kegiatan" as const,
+              foto: photos,
+              warna: "from-primary-700 to-primary-900",
+              subLabel: k.kategori,
+            };
+          });
 
         setKaryaGaleri(virtualKarya);
         setFasilitasGaleri(virtualFasilitas);
@@ -101,11 +111,39 @@ export default function GaleriPage() {
     fetchData();
   }, []);
 
-  // Merge lists
+  // Merge lists with custom sorting rules:
+  // 1. Kegiatan and Tridharma sorted together by year (descending).
+  // 2. Within the same year, all Kegiatan items appear first (sorted descending by exact date), followed by Tridharma.
+  // 3. Fasilitas always appears at the very end of the list.
   const mergedList = [...fasilitasGaleri, ...karyaGaleri, ...kegiatanGaleri].sort((a, b) => {
-    const timeA = a.tanggal ? new Date(a.tanggal).getTime() : 0;
-    const timeB = b.tanggal ? new Date(b.tanggal).getTime() : 0;
-    return timeB - timeA;
+    // Handle Fasilitas (always last)
+    if (a.kategori === "fasilitas" && b.kategori !== "fasilitas") return 1;
+    if (b.kategori === "fasilitas" && a.kategori !== "fasilitas") return -1;
+    if (a.kategori === "fasilitas" && b.kategori === "fasilitas") {
+      return a.judul.localeCompare(b.judul);
+    }
+
+    // Now both a and b are either "kegiatan" or "tridharma"
+    const yearA = a.tanggal ? new Date(a.tanggal).getFullYear() : 0;
+    const yearB = b.tanggal ? new Date(b.tanggal).getFullYear() : 0;
+
+    if (yearA !== yearB) {
+      return yearB - yearA; // Newest year first
+    }
+
+    // Same year: Kegiatan comes first, then Tridharma
+    if (a.kategori === "kegiatan" && b.kategori === "tridharma") return -1;
+    if (a.kategori === "tridharma" && b.kategori === "kegiatan") return 1;
+
+    // Same year & same category
+    if (a.kategori === "kegiatan" && b.kategori === "kegiatan") {
+      const timeA = a.tanggal ? new Date(a.tanggal).getTime() : 0;
+      const timeB = b.tanggal ? new Date(b.tanggal).getTime() : 0;
+      return timeB - timeA; // Newest kegiatan first
+    }
+
+    // Same year & both are tridharma
+    return a.judul.localeCompare(b.judul);
   });
 
   const filtered = mergedList.filter((item) => {

@@ -986,7 +986,8 @@ export default function ConfigManagement() {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 cursor-pointer"
+                disabled={isSubmitting}
+                className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 cursor-pointer disabled:opacity-50"
               >
                 Batal
               </button>

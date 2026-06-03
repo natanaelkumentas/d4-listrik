@@ -43,6 +43,7 @@ export default function AdminKurikulumPage() {
   const [catEditingId, setCatEditingId] = useState<number | null>(null);
   const [isCatSubmitting, setIsCatSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMkLoading, setIsMkLoading] = useState(false);
   const [isCplLoading, setIsCplLoading] = useState(false);
   const [visiMisiList, setVisiMisiList] = useState<VisiMisiRow[]>([]);
@@ -77,9 +78,9 @@ export default function AdminKurikulumPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMsg, setConfirmMsg] = useState("");
   const [confirmTitle, setConfirmTitle] = useState("");
-  const confirmCallback = useRef<(() => void) | null>(null);
+  const confirmCallback = useRef<(() => void | Promise<void>) | null>(null);
 
-  const showConfirm = (title: string, message: string, onOk: () => void) => {
+  const showConfirm = (title: string, message: string, onOk: () => void | Promise<void>) => {
     setConfirmTitle(title);
     setConfirmMsg(message);
     confirmCallback.current = onOk;
@@ -169,6 +170,7 @@ export default function AdminKurikulumPage() {
 
   const handleKurikulumSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       const res = await fetch("/api/kurikulum", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(kurikulum) });
       if (!res.ok) {
@@ -181,6 +183,8 @@ export default function AdminKurikulumPage() {
       router.refresh();
     } catch (err: any) {
       showError(err.message || "Gagal menyimpan data.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -213,6 +217,7 @@ export default function AdminKurikulumPage() {
 
   const handleMkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       if (mkEditingKode) {
         const res = await fetch(`/api/mata-kuliah/${encodeURIComponent(mkEditingKode)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(mkForm) });
@@ -238,6 +243,8 @@ export default function AdminKurikulumPage() {
       router.refresh();
     } catch (err: any) {
       showError(err.message || "Gagal menyimpan mata kuliah");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -261,6 +268,7 @@ export default function AdminKurikulumPage() {
 
   const handleCplSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       if (cplEditingKode) {
         const res = await fetch(`/api/cpl/${encodeURIComponent(cplEditingKode)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deskripsi: cplForm.deskripsi, kategori: cplForm.kategori }) });
@@ -286,6 +294,8 @@ export default function AdminKurikulumPage() {
       router.refresh();
     } catch (err: any) {
       showError(err.message || "Gagal menyimpan CPL");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -573,7 +583,7 @@ export default function AdminKurikulumPage() {
             </div>
           </div>
           <div className="pt-6 border-t border-gray-100">
-            <button type="submit" className="px-6 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors shadow-sm">Simpan Perubahan</button>
+            <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-50">{isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}</button>
           </div>
         </form>
       )}
@@ -907,8 +917,8 @@ export default function AdminKurikulumPage() {
                 <textarea rows={3} value={mkForm.deskripsi || ""} onChange={e => setMkForm({ ...mkForm, deskripsi: e.target.value })} className={inputCls + " resize-none"} placeholder="Masukkan deskripsi mata kuliah..." />
               </div>
               <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6">
-                <button type="button" onClick={() => setMkModalOpen(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Batal</button>
-                <button type="submit" className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors">Simpan</button>
+                <button type="button" onClick={() => setMkModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50">Batal</button>
+                <button type="submit" disabled={isSubmitting} className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors disabled:opacity-50">{isSubmitting ? "Menyimpan..." : "Simpan"}</button>
               </div>
             </form>
           </Modal>
@@ -1040,8 +1050,8 @@ export default function AdminKurikulumPage() {
               </div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label><textarea required rows={4} value={cplForm.deskripsi || ""} onChange={e => setCplForm({ ...cplForm, deskripsi: e.target.value })} className={inputCls + " resize-none"} /></div>
               <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6">
-                <button type="button" onClick={() => setCplModalOpen(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Batal</button>
-                <button type="submit" className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors">Simpan</button>
+                <button type="button" onClick={() => setCplModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50">Batal</button>
+                <button type="submit" disabled={isSubmitting} className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors disabled:opacity-50">{isSubmitting ? "Menyimpan..." : "Simpan"}</button>
               </div>
             </form>
           </Modal>
@@ -1175,7 +1185,13 @@ export default function AdminKurikulumPage() {
 
       <ConfirmDialog
         isOpen={confirmOpen}
-        onConfirm={() => { setConfirmOpen(false); confirmCallback.current?.(); confirmCallback.current = null; }}
+        onConfirm={async () => {
+          if (confirmCallback.current) {
+            await confirmCallback.current();
+          }
+          setConfirmOpen(false);
+          confirmCallback.current = null;
+        }}
         onCancel={() => { setConfirmOpen(false); confirmCallback.current = null; }}
         title={confirmTitle}
         message={confirmMsg}

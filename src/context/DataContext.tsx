@@ -85,17 +85,23 @@ function mapKarya(k: any) {
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  useEffect(() => {
+  // ── Synchronous path tracking ──────────────────────────────────
+  // Must run during render (not in useEffect) so that sessionStorage
+  // is up-to-date BEFORE child components read it in useState initializers.
+  const lastTrackedPathname = useRef<string>("");
+
+  if (pathname !== lastTrackedPathname.current) {
     try {
       const currentPrev = sessionStorage.getItem("current_path");
       if (currentPrev && currentPrev !== pathname) {
         sessionStorage.setItem("prev_path", currentPrev);
       }
       sessionStorage.setItem("current_path", pathname);
-    } catch (e) {
-      console.warn("sessionStorage is not available:", e);
+    } catch {
+      // sessionStorage unavailable
     }
-  }, [pathname]);
+    lastTrackedPathname.current = pathname;
+  }
 
   const [dosenList, setDosenList] = useState<Dosen[]>([]);
   const [pegawaiList, setPegawaiList] = useState<Pegawai[]>([]);

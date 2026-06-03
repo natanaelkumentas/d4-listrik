@@ -85,6 +85,7 @@ export default function DosenKaryaPage() {
   const [isUploadingBelakang, setIsUploadingBelakang] = useState(false);
   const [fotoUrls, setFotoUrls] = useState<string[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmDeletingId, setConfirmDeletingId] = useState<string | null>(null);
@@ -207,6 +208,7 @@ export default function DosenKaryaPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       const jenis = formData.jenis as string;
       const res = await fetch("/api/karya-pending", {
@@ -234,6 +236,8 @@ export default function DosenKaryaPage() {
       showSuccess("Karya berhasil diajukan untuk disetujui!");
     } catch (err: any) {
       showError(err.message || "Gagal mengajukan karya.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -687,38 +691,40 @@ export default function DosenKaryaPage() {
           </div>
 
           {/* ===== Photo Upload ===== */}
-          <div className="border-t border-gray-100 pt-4 mt-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Foto Dokumentasi (untuk Galeri Tridharma)</p>
-            {fotoUrls.length > 0 && (
-              <div className="flex flex-wrap gap-3 mb-3">
-                {fotoUrls.map((url, i) => (
-                  <div key={i} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-                    <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => handleRemovePhoto(i)}
-                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <HiOutlineTrash className="w-5 h-5 text-white" />
-                    </button>
-                  </div>
-                ))}
+          {(formData.jenis === "publikasi" || formData.jenis === "penelitian" || formData.jenis === "pengabdian") && (
+            <div className="border-t border-gray-100 pt-4 mt-2">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Foto Dokumentasi (untuk Galeri Tridharma)</p>
+              {fotoUrls.length > 0 && (
+                <div className="flex flex-wrap gap-3 mb-3">
+                  {fotoUrls.map((url, i) => (
+                    <div key={i} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                      <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => handleRemovePhoto(i)}
+                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <HiOutlineTrash className="w-5 h-5 text-white" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-3">
+                <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" id="dosen-karya-photo-upload" />
+                <button type="button" onClick={() => photoInputRef.current?.click()} disabled={isUploadingPhoto}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50">
+                  <HiOutlinePhoto className="w-4 h-4" />
+                  {isUploadingPhoto ? "Mengupload..." : "Tambah Foto"}
+                </button>
+                {fotoUrls.length === 0 && <span className="text-xs text-gray-400">Belum ada foto</span>}
               </div>
-            )}
-            <div className="flex items-center gap-3">
-              <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" id="dosen-karya-photo-upload" />
-              <button type="button" onClick={() => photoInputRef.current?.click()} disabled={isUploadingPhoto}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50">
-                <HiOutlinePhoto className="w-4 h-4" />
-                {isUploadingPhoto ? "Mengupload..." : "Tambah Foto"}
-              </button>
-              {fotoUrls.length === 0 && <span className="text-xs text-gray-400">Belum ada foto</span>}
             </div>
-          </div>
+          )}
 
           <div className="p-3 rounded-xl bg-amber-50 text-amber-700 text-xs border border-amber-100">
             <strong>Info:</strong> Karya yang diajukan akan ditinjau oleh admin sebelum dipublikasikan.
           </div>
           <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6">
-            <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Batal</button>
-            <button type="submit" className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors">Ajukan Karya</button>
+            <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50">Batal</button>
+            <button type="submit" disabled={isSubmitting} className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors disabled:opacity-50">{isSubmitting ? "Mengajukan..." : "Ajukan Karya"}</button>
           </div>
         </form>
       </Modal>

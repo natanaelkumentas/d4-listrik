@@ -98,6 +98,7 @@ export default function AdminDashboardPage() {
   const [clearIp, setClearIp] = useState("");
   const [clearPreviewCount, setClearPreviewCount] = useState(0);
   const [isClearLoading, setIsClearLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Debounced input for User search (retained directly on page)
   const [debouncedUser, setDebouncedUser] = useState("");
@@ -196,6 +197,7 @@ export default function AdminDashboardPage() {
 
   // Export logic
   const exportLogs = async (format: "json" | "csv") => {
+    setIsExporting(true);
     try {
       let url = `/api/logs?export=true`;
       if (actionFilter) url += `&aksi=${actionFilter}`;
@@ -264,6 +266,8 @@ export default function AdminDashboardPage() {
     } catch (e) {
       console.error(e);
       showError("Terjadi kesalahan saat memproses ekspor.");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -809,17 +813,19 @@ export default function AdminDashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsExportModalOpen(false)}
-                className="px-3.5 py-1.5 sm:px-4 sm:py-2 border border-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-50 transition-colors"
+                disabled={isExporting}
+                className="px-3.5 py-1.5 sm:px-4 sm:py-2 border border-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
+                disabled={isExporting}
                 onClick={() => {
                   setIsExportModalOpen(false);
                   setIsConfirmModalOpen(true);
                 }}
-                className="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-primary-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-primary-700 transition-colors shadow-sm"
+                className="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-primary-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-50"
               >
                 Unduh Berkas
               </button>
@@ -869,19 +875,21 @@ export default function AdminDashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsConfirmModalOpen(false)}
-                className="px-3.5 py-1.5 sm:px-4 sm:py-2 border border-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-50 transition-colors"
+                disabled={isExporting}
+                className="px-3.5 py-1.5 sm:px-4 sm:py-2 border border-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Batal
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  exportLogs(exportFormat);
+                disabled={isExporting}
+                onClick={async () => {
+                  await exportLogs(exportFormat);
                   setIsConfirmModalOpen(false);
                 }}
-                className="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-primary-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-primary-700 transition-colors shadow-sm"
+                className="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-primary-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-50"
               >
-                Lanjutkan
+                {isExporting ? "Mengunduh..." : "Lanjutkan"}
               </button>
             </div>
           </div>
@@ -992,6 +1000,7 @@ export default function AdminDashboardPage() {
             <div className="flex items-center justify-between border-t border-gray-100 pt-3 flex-shrink-0">
               <button
                 type="button"
+                disabled={isClearLoading}
                 onClick={() => {
                   setClearStartDate("");
                   setClearEndDate("");
@@ -1000,7 +1009,7 @@ export default function AdminDashboardPage() {
                   setClearPengguna("");
                   setClearIp("");
                 }}
-                className="text-xs font-bold text-red-650 hover:text-red-800 transition-colors uppercase"
+                className="text-xs font-bold text-red-650 hover:text-red-800 transition-colors uppercase disabled:opacity-50"
               >
                 Reset
               </button>
@@ -1008,7 +1017,8 @@ export default function AdminDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setIsClearModalOpen(false)}
-                  className="px-3.5 py-1.5 sm:px-4 sm:py-2 border border-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-50 transition-colors"
+                  disabled={isClearLoading}
+                  className="px-3.5 py-1.5 sm:px-4 sm:py-2 border border-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   Batal
                 </button>
@@ -1064,11 +1074,12 @@ export default function AdminDashboardPage() {
             <div className="flex items-center justify-end gap-2 border-t border-gray-100 pt-3 flex-shrink-0">
               <button
                 type="button"
+                disabled={isClearLoading}
                 onClick={() => {
                   setIsClearConfirmOpen(false);
                   setIsClearModalOpen(true);
                 }}
-                className="px-3.5 py-1.5 sm:px-4 sm:py-2 border border-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-50 transition-colors"
+                className="px-3.5 py-1.5 sm:px-4 sm:py-2 border border-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Kembali
               </button>

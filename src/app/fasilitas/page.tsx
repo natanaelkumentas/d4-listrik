@@ -292,7 +292,7 @@ export default function FasilitasPage() {
             </div>
 
             {/* Quick Details Badges */}
-            <div className="grid grid-cols-2 gap-4 pb-4 border-b border-gray-100">
+            <div className={`grid ${selectedFasilitas.kepala_lab ? 'grid-cols-2' : 'grid-cols-1'} gap-4 pb-4 border-b border-gray-100`}>
               <div className="flex items-center gap-3 bg-primary-50/50 rounded-xl p-3.5 border border-primary-50">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-100 text-primary-600 flex-shrink-0">
                   <HiHome className="w-5 h-5" />
@@ -305,27 +305,29 @@ export default function FasilitasPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 bg-primary-50/50 rounded-xl p-3.5 border border-primary-50">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-100 text-primary-600 flex-shrink-0">
-                  <HiUser className="w-5 h-5" />
+              {selectedFasilitas.kepala_lab && (
+                <div className="flex items-center gap-3 bg-primary-50/50 rounded-xl p-3.5 border border-primary-50">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-100 text-primary-600 flex-shrink-0">
+                    <HiUser className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Kepala Lab / Ruang</p>
+                    <p className="text-sm font-bold text-primary-900 mt-0.5">
+                      {(() => {
+                        const matched = findDosenByName(selectedFasilitas.kepala_lab);
+                        if (matched) {
+                          return (
+                            <Link href={`/staf/${matched.id}`} className="text-primary-600 hover:underline hover:text-primary-700 transition-colors">
+                              {selectedFasilitas.kepala_lab}
+                            </Link>
+                          );
+                        }
+                        return selectedFasilitas.kepala_lab;
+                      })()}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Kepala Lab / Ruang</p>
-                  <p className="text-sm font-bold text-primary-900 mt-0.5">
-                    {(() => {
-                      const matched = findDosenByName(selectedFasilitas.kepala_lab);
-                      if (matched) {
-                        return (
-                          <Link href={`/staf/${matched.id}`} className="text-primary-600 hover:underline hover:text-primary-700 transition-colors">
-                            {selectedFasilitas.kepala_lab}
-                          </Link>
-                        );
-                      }
-                      return selectedFasilitas.kepala_lab || "—";
-                    })()}
-                  </p>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Description */}

@@ -1280,7 +1280,8 @@ export default function AdminStafPage() {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+              disabled={isSubmitting}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50"
             >
               Batal
             </button>
@@ -1360,7 +1361,8 @@ export default function AdminStafPage() {
                 <button
                   type="button"
                   onClick={() => setIsDetailOpen(false)}
-                  className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+                  disabled={actionInProgress}
+                  className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50"
                 >
                   Tutup
                 </button>
@@ -1411,7 +1413,8 @@ export default function AdminStafPage() {
             <button
               type="button"
               onClick={() => setIsRejectOpen(false)}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+              disabled={actionInProgress}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50"
             >
               Batal
             </button>

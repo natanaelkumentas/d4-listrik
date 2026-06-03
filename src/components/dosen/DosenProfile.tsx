@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getBackInfo, navigateBack } from "@/lib/backLabel";
 import { cachedFetch } from "@/lib/fetchCache";
 import { Dosen, getTotalKarya } from "@/types/dosen";
 import KaryaTabs from "./KaryaTabs";
@@ -26,7 +27,14 @@ export default function DosenProfile({ dosen, index }: { dosen: Dosen; index: nu
   const totalKarya = getTotalKarya(dosen);
   const [prodiName, setProdiName] = useState("D4 Teknik Listrik");
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [backLabel, setBackLabel] = useState("Kembali ke Daftar Staf");
+  const [backInfo, setBackInfo] = useState({
+    label: "Kembali ke Daftar Staf",
+    href: "/staf",
+  });
+
+  useEffect(() => {
+    setBackInfo(getBackInfo({ label: "Kembali ke Daftar Staf", href: "/staf" }));
+  }, []);
 
   useEffect(() => {
     const getProdiName = async () => {
@@ -42,62 +50,19 @@ export default function DosenProfile({ dosen, index }: { dosen: Dosen; index: nu
     getProdiName();
   }, []);
 
-  useEffect(() => {
-    try {
-      const prevPath = sessionStorage.getItem("prev_path");
-      if (prevPath) {
-        if (prevPath.includes("/dashboard")) {
-          setBackLabel("Kembali ke Dashboard");
-          return;
-        } else if (prevPath.includes("/galeri")) {
-          setBackLabel("Kembali ke Galeri");
-          return;
-        } else if (prevPath.includes("/fasilitas")) {
-          setBackLabel("Kembali ke Fasilitas");
-          return;
-        } else if (prevPath.includes("/tentang")) {
-          setBackLabel("Kembali ke Tentang");
-          return;
-        } else if (prevPath.includes("/kurikulum")) {
-          setBackLabel("Kembali ke Kurikulum");
-          return;
-        }
-      }
-
-      if (typeof window !== "undefined" && document.referrer) {
-        const referrer = document.referrer;
-        if (referrer.includes("/dashboard")) {
-          setBackLabel("Kembali ke Dashboard");
-        } else if (referrer.includes("/galeri")) {
-          setBackLabel("Kembali ke Galeri");
-        } else if (referrer.includes("/fasilitas")) {
-          setBackLabel("Kembali ke Fasilitas");
-        }
-      }
-    } catch (e) {
-      console.warn("sessionStorage is not available:", e);
-    }
-  }, []);
-
   const isHomebase = (dosen.programStudi || "").trim().toLowerCase() === prodiName.trim().toLowerCase();
 
   return (
     <div className="animate-fade-in-up">
       {/* Back button */}
       <button
-        onClick={() => {
-          if (window.history.length > 1) {
-            router.back();
-          } else {
-            router.push("/staf");
-          }
-        }}
+        onClick={() => navigateBack(router, backInfo.href)}
         className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-primary-600 font-medium mb-8 transition-colors cursor-pointer bg-transparent border-0"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
-        {backLabel}
+        {backInfo.label}
       </button>
 
 

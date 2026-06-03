@@ -102,6 +102,7 @@ export default function AdminKaryaPage() {
   const [karyaForm, setKaryaForm] = useState<Record<string, string | number>>({});
   const [fotoUrls, setFotoUrls] = useState<string[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Confirm dialog state
@@ -109,9 +110,9 @@ export default function AdminKaryaPage() {
   const [confirmMsg, setConfirmMsg] = useState("");
   const [confirmTitle, setConfirmTitle] = useState("");
   const [confirmVariant, setConfirmVariant] = useState<"danger" | "default">("default");
-  const confirmCallback = useRef<(() => void) | null>(null);
+  const confirmCallback = useRef<(() => void | Promise<void>) | null>(null);
 
-  const showConfirm = (title: string, message: string, onOk: () => void, variant: "danger" | "default" = "default") => {
+  const showConfirm = (title: string, message: string, onOk: () => void | Promise<void>, variant: "danger" | "default" = "default") => {
     setConfirmTitle(title);
     setConfirmMsg(message);
     setConfirmVariant(variant);
@@ -243,6 +244,7 @@ export default function AdminKaryaPage() {
 
   const handleReject = async () => {
     if (!rejectingId) return;
+    setIsSubmitting(true);
     try {
       const res = await fetch(`/api/karya-pending/${rejectingId}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
@@ -259,6 +261,8 @@ export default function AdminKaryaPage() {
       router.refresh();
     } catch (err: any) {
       showError(err.message || "Gagal memproses penolakan");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -351,6 +355,7 @@ export default function AdminKaryaPage() {
 
   const handleKaryaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     const jenis = karyaForm.jenis as string;
     const payload = {
       dosen_id: karyaForm.dosen_id,
@@ -392,6 +397,8 @@ export default function AdminKaryaPage() {
       router.refresh();
     } catch (err: any) {
       showError(err.message || "Gagal menyimpan karya");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -774,8 +781,8 @@ export default function AdminKaryaPage() {
             className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
             placeholder="Alasan penolakan..." />
           <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
-            <button onClick={() => setRejectModalOpen(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Batal</button>
-            <button onClick={handleReject} className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors">Tolak Pengajuan</button>
+            <button onClick={() => setRejectModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50">Batal</button>
+            <button onClick={handleReject} disabled={isSubmitting} className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50">{isSubmitting ? "Menolak..." : "Tolak Pengajuan"}</button>
           </div>
         </div>
       </Modal>
@@ -964,35 +971,37 @@ export default function AdminKaryaPage() {
           </div>
 
           {/* ===== Photo Upload ===== */}
-          <div className="border-t border-gray-100 pt-4 mt-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Foto Dokumentasi (untuk Galeri Tridharma)</p>
-            {fotoUrls.length > 0 && (
-              <div className="flex flex-wrap gap-3 mb-3">
-                {fotoUrls.map((url, i) => (
-                  <div key={i} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-                    <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => handleRemovePhoto(i)}
-                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <HiOutlineTrash className="w-5 h-5 text-white" />
-                    </button>
-                  </div>
-                ))}
+          {(karyaForm.jenis === "publikasi" || karyaForm.jenis === "penelitian" || karyaForm.jenis === "pengabdian") && (
+            <div className="border-t border-gray-100 pt-4 mt-2">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Foto Dokumentasi (untuk Galeri Tridharma)</p>
+              {fotoUrls.length > 0 && (
+                <div className="flex flex-wrap gap-3 mb-3">
+                  {fotoUrls.map((url, i) => (
+                    <div key={i} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                      <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => handleRemovePhoto(i)}
+                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <HiOutlineTrash className="w-5 h-5 text-white" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-3">
+                <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" id="karya-photo-upload" />
+                <button type="button" onClick={() => photoInputRef.current?.click()} disabled={isUploadingPhoto}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50">
+                  <HiOutlinePhoto className="w-4 h-4" />
+                  {isUploadingPhoto ? "Mengupload..." : "Tambah Foto"}
+                </button>
+                {fotoUrls.length === 0 && <span className="text-xs text-gray-400">Belum ada foto</span>}
               </div>
-            )}
-            <div className="flex items-center gap-3">
-              <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" id="karya-photo-upload" />
-              <button type="button" onClick={() => photoInputRef.current?.click()} disabled={isUploadingPhoto}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50">
-                <HiOutlinePhoto className="w-4 h-4" />
-                {isUploadingPhoto ? "Mengupload..." : "Tambah Foto"}
-              </button>
-              {fotoUrls.length === 0 && <span className="text-xs text-gray-400">Belum ada foto</span>}
             </div>
-          </div>
+          )}
 
           <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6">
-            <button type="button" onClick={() => setKaryaModalOpen(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Batal</button>
-            <button type="submit" className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors">Simpan</button>
+            <button type="button" onClick={() => setKaryaModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50">Batal</button>
+            <button type="submit" disabled={isSubmitting} className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors disabled:opacity-50">{isSubmitting ? "Menyimpan..." : "Simpan"}</button>
           </div>
         </form>
       </Modal>
@@ -1121,7 +1130,13 @@ export default function AdminKaryaPage() {
 
       <ConfirmDialog
         isOpen={confirmOpen}
-        onConfirm={() => { setConfirmOpen(false); confirmCallback.current?.(); confirmCallback.current = null; }}
+        onConfirm={async () => {
+          if (confirmCallback.current) {
+            await confirmCallback.current();
+          }
+          setConfirmOpen(false);
+          confirmCallback.current = null;
+        }}
         onCancel={() => { setConfirmOpen(false); confirmCallback.current = null; }}
         title={confirmTitle}
         message={confirmMsg}

@@ -18,6 +18,7 @@ import {
 import ImageLightbox from "@/components/universal/ImageLightbox";
 import { GaleriItem } from "@/types/galeri";
 import { cachedFetch } from "@/lib/fetchCache";
+import { getBackInfo, navigateBack } from "@/lib/backLabel";
 
 const jenisLabels: Record<string, string> = {
   publikasi: "Publikasi",
@@ -95,21 +96,13 @@ export default function GaleriDetailPage() {
   const [fasilitasItem, setFasilitasItem] = useState<GaleriItem | null>(null);
   const [originalFasilitas, setOriginalFasilitas] = useState<any | null>(null);
   const [isFasilitasLoading, setIsFasilitasLoading] = useState(false);
-  const [backLabel, setBackLabel] = useState("Kembali ke Galeri");
+  const [backInfo, setBackInfo] = useState({
+    label: "Kembali ke Galeri",
+    href: "/galeri",
+  });
 
   useEffect(() => {
-    if (typeof window !== "undefined" && document.referrer) {
-      const referrer = document.referrer;
-      if (referrer.includes("/dashboard")) {
-        setBackLabel("Kembali ke Dashboard");
-      } else if (referrer.includes("/staf/")) {
-        setBackLabel("Kembali ke Profil Staf");
-      } else if (referrer.includes("/staf")) {
-        setBackLabel("Kembali ke Daftar Staf");
-      } else if (referrer.includes("/fasilitas")) {
-        setBackLabel("Kembali ke Fasilitas");
-      }
-    }
+    setBackInfo(getBackInfo({ label: "Kembali ke Galeri", href: "/galeri" }));
   }, []);
 
   useEffect(() => {
@@ -137,13 +130,16 @@ export default function GaleriDetailPage() {
         const k = karyaList.find((karya: any) => karya.id === realKaryaId);
         if (k) {
           setOriginalKarya(k);
+          const photos = k.jenis === "bukuAjar"
+            ? [k.metadata?.sampul_depan, k.metadata?.sampul_belakang].filter(Boolean)
+            : (k.foto_urls || []);
           setKaryaItem({
             id: `karya-${k.id}`,
             judul: k.judul,
             deskripsi: k.deskripsi || "",
             tanggal: `${k.tahun}-01-01`,
             kategori: "tridharma",
-            foto: k.foto_urls || [],
+            foto: photos,
             warna: jenisGradients[k.jenis] || "from-blue-600 to-indigo-700",
             subLabel: jenisLabels[k.jenis] || k.jenis,
           });
@@ -452,17 +448,11 @@ export default function GaleriDetailPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="animate-fade-in-up">
             <button
-              onClick={() => {
-                if (window.history.length > 1) {
-                  router.back();
-                } else {
-                  router.push("/galeri");
-                }
-              }}
+              onClick={() => navigateBack(router, backInfo.href)}
               className="inline-flex items-center gap-2 text-sm text-white/90 hover:text-white font-medium mb-6 transition-colors drop-shadow-md cursor-pointer bg-transparent border-0"
             >
               <HiArrowLeft className="w-4 h-4" />
-              {backLabel}
+              {backInfo.label}
             </button>
 
             <div className="bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden">
@@ -480,7 +470,13 @@ export default function GaleriDetailPage() {
                 {/* Meta columns arranged horizontally */}
                 <div className="flex flex-wrap gap-x-8 gap-y-6 pt-6 border-t border-gray-100">
                   {/* Date Column */}
-                  <InfoItem icon={HiOutlineCalendar} label="Tanggal / Tahun" value={formattedDate} />
+                  {item.kategori !== "fasilitas" && (
+                    <InfoItem
+                      icon={HiOutlineCalendar}
+                      label={item.kategori === "tridharma" ? "Tahun" : "Tanggal"}
+                      value={item.kategori === "tridharma" ? String(dateObj.getFullYear()) : formattedDate}
+                    />
+                  )}
 
                   {/* Kegiatan Location */}
                   {isKegiatan && originalKegiatan?.lokasi && (
@@ -605,36 +601,40 @@ export default function GaleriDetailPage() {
                   </div>
                 )}
 
-                <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-6">Dokumentasi Terkait</h2>
+                {!(isKarya && originalKarya?.jenis === "bukuAjar") && (
+                  <>
+                    <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-6">Dokumentasi Terkait</h2>
 
-                {(!item.foto || item.foto.length === 0) ? (
-                  <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100">
-                    <img
-                      src="/images/default.svg"
-                      alt="Placeholder"
-                      className="w-full h-auto object-cover aspect-video opacity-20"
-                    />
-                  </div>
-                ) : (
-                  <div className={`grid gap-6 ${item.foto.length === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
-                    {item.foto.map((url, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          setLightboxImages(item.foto || []);
-                          setLightboxIndex(idx);
-                          setLightboxOpen(true);
-                        }}
-                        className="relative rounded-2xl overflow-hidden shadow-sm border border-gray-100 group cursor-zoom-in text-left focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                      >
+                    {(!item.foto || item.foto.length === 0) ? (
+                      <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100">
                         <img
-                          src={url}
-                          alt={`${item.judul} - Foto ${idx + 1}`}
-                          className="w-full h-auto object-cover aspect-video group-hover:scale-105 transition-transform duration-500"
+                          src="/images/default.svg"
+                          alt="Placeholder"
+                          className="w-full h-auto object-cover aspect-video opacity-20"
                         />
-                      </button>
-                    ))}
-                  </div>
+                      </div>
+                    ) : (
+                      <div className={`grid gap-6 ${item.foto.length === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+                        {item.foto.map((url, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setLightboxImages(item.foto || []);
+                              setLightboxIndex(idx);
+                              setLightboxOpen(true);
+                            }}
+                            className="relative rounded-2xl overflow-hidden shadow-sm border border-gray-100 group cursor-zoom-in text-left focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                          >
+                            <img
+                              src={url}
+                              alt={`${item.judul} - Foto ${idx + 1}`}
+                              className="w-full h-auto object-cover aspect-video group-hover:scale-105 transition-transform duration-500"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
